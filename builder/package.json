@@ -1,0 +1,23 @@
+{
+  "name": "builder",
+  "version": "1.0.0",
+  "description": "",
+  "license": "ISC",
+  "author": "",
+  "main": "dist/script.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/script.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.946.0",
+    "dotenv": "^17.2.3",
+    "ioredis": "^5.8.2",
+    "mime-types": "^3.0.2"
+  },
+  "devDependencies": {
+    "@types/mime-types": "^3.0.1",
+    "@types/node": "^24.10.1",
+    "typescript": "^5.9.3"
+  }
+}
