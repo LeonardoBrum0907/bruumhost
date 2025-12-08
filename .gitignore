@@ -1,2 +1,4 @@
 .cursor/
 docs/
+**/node_modules/
+**/dist/
