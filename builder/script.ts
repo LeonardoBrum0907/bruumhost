@@ -4,6 +4,7 @@ import fs from 'fs'
 import mime from 'mime-types'
 import Redis from 'ioredis'
 import dotenv from 'dotenv'
+import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
 
 dotenv.config()
 
@@ -15,3 +16,48 @@ const MINIO_SECRET_KEY = process.env.MINIO_SECRET_KEY!
 const MINIO_BUCKET = process.env.MINIO_BUCKET!
 
 const publisher = new Redis(REDIS_URL)
+
+const s3Client = new S3Client({
+   endpoint: MINIO_ENDPOINT,
+   region: 'us-east-1',
+   credentials: {
+    accessKeyId: MINIO_ACCESS_KEY,
+    secretAccessKey: MINIO_SECRET_KEY
+   },
+   forcePathStyle: true
+})
+
+function publishLog(log: string): void {
+   publisher.publish(`logs:${PROJECT_ID}`, JSON.stringify({ log }))
+}
+
+async function uploadDirectoryToMinIO(localPath: string, s3Prefix: string): Promise<void> {
+   const files = fs.readdirSync(localPath) // !!!
+
+   for (const file of files) {
+      const filePath = path.join(localPath, file) // !!!
+      const s3Key = path.join(s3Prefix, file).replace(/\\/g, '/') // !!!
+
+      if (fs.lstatSync(filePath).isDirectory()) {
+         await uploadDirectoryToMinIO(filePath, s3Key)
+      } else {
+         const fileContent = fs.readFileSync(filePath) // !!!
+         const contentType = mime.lookup(filePath) || 'application/octet-stream'
+         const objectParams = {
+            Bucket: MINIO_BUCKET,
+            Key: s3Key,
+            Body: fileContent,
+            ContentType: contentType
+         }
+
+         try {
+            await s3Client.send(new PutObjectCommand(objectParams))
+            publishLog(`Uploaded: ${s3Key}`)
+         } catch (error: any) {
+            console.error(`Error uploading ${s3Key}:`, error)
+            publishLog(`Error uploading ${s3Key}: ${error.message}`)
+            throw error
+         }
+      }
+   }
+}
