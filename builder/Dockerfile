@@ -20,7 +20,7 @@ WORKDIR /home/app
 
 # Copia os arquivos do projeto para o container
 COPY main.sh main.sh
-COPY script.js script.js
+COPY script.ts script.ts
 COPY tsconfig.json tsconfig.json
 COPY package*.json .
 
@@ -34,7 +34,10 @@ RUN npm run build
 RUN chmod +x main.sh
 
 # Define o comando de entrada para o container
-ENTRYPOINT ["/home/app/main.sh"]
+# ENTRYPOINT ["/home/app/main.sh"]
+
+# Em vez de usar ENTRYPOINT, estamos usando CMD para executar o script main.sh no windows localmente por que não conseguimos converter o line endings de CRLF para LF
+CMD ["sh", "/home/app/main.sh"]
 
 # O comando de entrada é o comando que será executado quando o container for iniciado
 # Neste caso, o comando de entrada é o script main.sh
