@@ -84,7 +84,8 @@ async function init(): Promise<void> {
 
    await ensureBucketExists()
 
-   const outDirPath = path.join(__dirname, 'output')
+   // const outDirPath = path.join(__dirname, 'output')
+   const outDirPath = '/home/app/output'
    const p: ChildProcess = exec(`cd ${outDirPath} && npm install && npm run build`)
 
    p.stdout?.on('data', (data: Buffer) => {
