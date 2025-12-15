@@ -4,7 +4,7 @@ import fs from 'fs'
 import mime from 'mime-types'
 import Redis from 'ioredis'
 import dotenv from 'dotenv'
-import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
+import { CreateBucketCommand, HeadBucketCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
 
 dotenv.config()
 
@@ -32,16 +32,16 @@ function publishLog(log: string): void {
 }
 
 async function uploadDirectoryToMinIO(localPath: string, s3Prefix: string): Promise<void> {
-   const files = fs.readdirSync(localPath) // !!!
+   const files = fs.readdirSync(localPath)
 
    for (const file of files) {
-      const filePath = path.join(localPath, file) // !!!
-      const s3Key = path.join(s3Prefix, file).replace(/\\/g, '/') // !!!
+      const filePath = path.join(localPath, file)
+      const s3Key = path.join(s3Prefix, file).replace(/\\/g, '/')
 
       if (fs.lstatSync(filePath).isDirectory()) {
          await uploadDirectoryToMinIO(filePath, s3Key)
       } else {
-         const fileContent = fs.readFileSync(filePath) // !!!
+         const fileContent = fs.readFileSync(filePath)
          const contentType = mime.lookup(filePath) || 'application/octet-stream'
          const objectParams = {
             Bucket: MINIO_BUCKET,
@@ -61,3 +61,78 @@ async function uploadDirectoryToMinIO(localPath: string, s3Prefix: string): Prom
       }
    }
 }
+
+async function ensureBucketExists(): Promise<void> {
+   try {
+      await s3Client.send(new HeadBucketCommand({ Bucket: MINIO_BUCKET }))
+      publishLog(`Bucket ${MINIO_BUCKET} exists`)
+   } catch (error: any) {
+      if (error.name === 'NotFound' || error.$metadata?.httpStatusCode === 404) {
+         publishLog(`Creating bucket ${MINIO_BUCKET}...`)
+         await s3Client.send(new CreateBucketCommand({ Bucket: MINIO_BUCKET }))
+         publishLog(`Bucket ${MINIO_BUCKET} created`)
+      } else {
+         publishLog(`Error checking bucket ${MINIO_BUCKET}: ${error.message}`)
+         throw error
+      }
+   }
+}
+
+async function init(): Promise<void> {
+   console.log('Executing script.ts')
+   publishLog('Build Started...')
+
+   await ensureBucketExists()
+
+   const outDirPath = path.join(__dirname, 'output')
+   const p: ChildProcess = exec(`cd ${outDirPath} && npm install && npm run build`)
+
+   p.stdout?.on('data', (data: Buffer) => {
+      console.log(data.toString())
+      publishLog(data.toString())
+   })
+
+   p.stderr?.on('data', (data) => {
+      console.log('Error', data.toString())
+      publishLog(`error: ${data.toString()}`)
+   })
+
+   p.on('close', async (code: number | null) => {
+      if (code !== 0) {
+         console.log(`Build failed with code ${code}`)
+         publishLog(`Build failed with exit code ${code}`)
+         process.exit(1)
+      }
+
+      console.log('Build Complete')
+      publishLog(`Build Complete`)
+
+      const distFolderPath = path.join(outDirPath, 'dist')
+
+      if (!fs.existsSync(distFolderPath)) {
+         console.error('Dist folder not found!')
+         publishLog('Error: Dist folder not found!')
+         process.exit(1)
+      }
+
+      publishLog(`Starting to upload files to MinIO`)
+
+      try {
+         const s3Prefix = `__outputs/${PROJECT_ID}`
+         await uploadDirectoryToMinIO(distFolderPath, s3Prefix)
+
+         publishLog(`Files uploaded successfully to MinIO: ${s3Prefix}`)
+         console.log(`Files uploaded successfully to MinIO: ${s3Prefix}`)
+         publishLog(`Finished.`)
+         console.log('Finished.')
+
+         process.exit(0)
+      } catch (error: any) {
+         console.error('Error uploading files:', error)
+         publishLog(`Error uploading files: ${error.message}`)
+         process.exit(1)
+      }
+   })
+}
+
+init()
