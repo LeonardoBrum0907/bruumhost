@@ -30,14 +30,14 @@ RUN npm install
 # Executa o script de build do projeto para converter o TypeScript para JavaScript
 RUN npm run build
 
-# Torna o script main.sh executável
-RUN chmod +x main.sh
+# Converter line endings de CRLF para LF e tornar o script main.sh executável
+RUN sed -i 's/\r$//' main.sh && chmod +x main.sh
 
 # Define o comando de entrada para o container
-# ENTRYPOINT ["/home/app/main.sh"]
+ENTRYPOINT ["/home/app/main.sh"]
 
 # Em vez de usar ENTRYPOINT, estamos usando CMD para executar o script main.sh no windows localmente por que não conseguimos converter o line endings de CRLF para LF
-CMD ["sh", "/home/app/main.sh"]
+# CMD ["sh", "/home/app/main.sh"]
 
 # O comando de entrada é o comando que será executado quando o container for iniciado
 # Neste caso, o comando de entrada é o script main.sh
