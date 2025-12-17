@@ -53,11 +53,13 @@ app.post('/new-project', async (req: Request<{}, {}, ProjectRequest>, res: Respo
    const projectSlug = slug ? slug : generateSlug()
 
    try {
+      console.log(`🚀 Criando container para projeto: ${projectSlug}`)
+
       const container = await docker.createContainer({
          Image: BUILD_IMAGE_NAME,
          name: `build-${projectSlug}-${Date.now()}`,
          Env: [
-            `GIT_REPOSITORY__URL=${githubURL}`,
+            `GITHUB_REPOSITORY_URL=${githubURL}`,
             `PROJECT_ID=${projectSlug}`,
             `REDIS_URL=${REDIS_URL}`,
             `MINIO_ENDPOINT=${MINIO_ENDPOINT}`,
@@ -71,10 +73,9 @@ app.post('/new-project', async (req: Request<{}, {}, ProjectRequest>, res: Respo
          AttachStdout: true, // !!!
          AttachStderr: true // !!!
       })
-
+      
       await container.start()
-
-      console.log(`Container iniciado: ${container.id}`)
+      console.log(`🚀 Container iniciado: ${container.id}`)
 
       return res.json({
          status: 'queued',
