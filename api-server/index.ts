@@ -81,7 +81,7 @@ app.post('/new-project', async (req: Request<{}, {}, ProjectRequest>, res: Respo
          status: 'queued',
          data: {
             projectSlug,
-            url: `http://${projectSlug}.${DOMAIN}`
+            url: `http://${projectSlug}.${DOMAIN}:8000`
          }
       })
    } catch (error: any) {
