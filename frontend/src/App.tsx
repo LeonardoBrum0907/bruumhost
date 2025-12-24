@@ -4,7 +4,7 @@ import { Button } from './components/ui/button'
 import { io } from 'socket.io-client'
 import LightPillar from './components/LightPillar'
 
-const socket = io('http://localhost:9002')
+const socket = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:9002')
 
 type DeplyStatus = 'idle' | 'building' | 'uploading' | 'success' | 'error'
 
@@ -63,6 +63,7 @@ function App() {
    const [deployStatus, setDeployStatus] = useState<DeplyStatus | null>(null)
    const [previewURL, setPreviewURL] = useState('')
    const [loading, setLoading] = useState(false)
+   const apiURL = import.meta.env.VITE_API_URL || 'http://localhost:9000'
 
    const logsContainerRef = useRef<HTMLDivElement>(null)
 
@@ -114,8 +115,10 @@ function App() {
    const handleDeploy = async () => {
       console.log('Deploying...')
       setLoading(true)
-      try {
-         const { data }: { data: { projectSlug: string, url: string } } = await fetch('http://localhost:9000/new-project', {
+      setDeployStatus('building')
+      
+      try {         
+         const { data }: { data: { projectSlug: string, url: string } } = await fetch(`${apiURL}/new-project`, {
             method: 'POST',
             headers: {
                'Content-Type': 'application/json'
