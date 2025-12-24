@@ -20,28 +20,8 @@ FROM nginx:alpine
 
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-RUN echo 'server {
-    listen 80;
-    server_name _;
-    root /usr/share/nginx/html;
-    index index.html;
-
-    gzip on;
-    gzip_vary on;
-    gzip_min_length 1024;
-    gzip_types text/plain text/css application/json application/javascript application/x-javascript text/xml application/xml application/xml+rss text/javascript;
-
-    location ~* \.(?:ico|css|js|gif|jpe?g|png|svg)$ {
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-    }
-
-    location / {
-      try_files $uri $uri/ /index.html;
-    }
-
-    autoindex off;
-}' > /etc/nginx/conf.d/default.conf
+# Copiar configuração customizada do nginx
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
 
