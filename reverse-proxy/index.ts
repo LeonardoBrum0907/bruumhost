@@ -30,12 +30,36 @@ const minioClient = new Minio.Client({
    secretKey: MINIO_SECRET_KEY
 })
 
+// Função para substituir URLs absolutas em CSS
+function replaceAbsoluteUrlsInCSS(cssContent: string, projectSlug: string): string {
+   const projectSlugPrefix = `/${projectSlug}/`
+   
+   // Substituir URLs absolutas em url() no CSS
+   return cssContent.replace(/url\((["']?)\/([^"')]*)\1\)/g, (match, quote, url) => {
+      // Se a URL já começa com projectSlug, não substituir
+      if (url.startsWith(`${projectSlug}/`)) {
+         return match
+      }
+      // Se for um protocolo (http, https, mailto, tel, data), não substituir
+      if (/^(https?|mailto|tel|data):/.test(url)) {
+         return match
+      }
+      // Caso contrário, adicionar o projectSlug
+      return `url(${quote}${projectSlugPrefix}${url}${quote})`
+   })
+}
+
 // Função para substituir URLs absolutas por relativas ao projectSlug
 function replaceAbsoluteUrls(htmlContent: string, projectSlug: string): string {
    const projectSlugPrefix = `/${projectSlug}/`
-   // Substituir href="/... e src="/... por href="/${projectSlug}/... e src="/${projectSlug}/...
-   // Mas evitar substituir se a URL já começar com /${projectSlug}/ ou for um protocolo (http://, https://, etc.)
-   return htmlContent.replace(/(href|src)=(["'])\/([^"']*)/g, (match, attr, quote, url) => {
+   
+   // Substituir URLs absolutas em diferentes formatos:
+   // 1. href="/..." e src="/..." (atributos HTML)
+   // 2. srcset="/..." (atributo srcset)
+   // 3. url("/...") e url('/...') (CSS)
+   
+   // 1. Substituir em atributos href e src
+   htmlContent = htmlContent.replace(/(href|src)=(["'])\/([^"']*)/g, (match, attr, quote, url) => {
       // Se a URL já começa com projectSlug, não substituir
       if (url.startsWith(`${projectSlug}/`)) {
          return match
@@ -47,6 +71,41 @@ function replaceAbsoluteUrls(htmlContent: string, projectSlug: string): string {
       // Caso contrário, adicionar o projectSlug
       return `${attr}=${quote}${projectSlugPrefix}${url}`
    })
+   
+   // 2. Substituir em atributo srcset (pode ter múltiplas URLs)
+   htmlContent = htmlContent.replace(/srcset=(["'])([^"']*)/g, (match, quote, srcsetValue) => {
+      const urls = srcsetValue.split(',').map((urlPart: string) => {
+         const trimmed = urlPart.trim()
+         // srcset pode ter formato "url width" ou "url 2x"
+         const parts = trimmed.split(/\s+/)
+         const url = parts[0]
+         
+         if (url.startsWith('/') && !url.startsWith(`/${projectSlug}/`)) {
+            // Se for protocolo, não substituir
+            if (/^(https?|mailto|tel|data):/.test(url)) {
+               return trimmed
+            }
+            // Adicionar projectSlug
+            const newUrl = `${projectSlugPrefix}${url.substring(1)}`
+            return parts.length > 1 ? `${newUrl} ${parts.slice(1).join(' ')}` : newUrl
+         }
+         return trimmed
+      })
+      return `srcset=${quote}${urls.join(', ')}`
+   })
+   
+   // 3. Substituir em CSS url() (dentro de style tags ou atributos)
+   htmlContent = htmlContent.replace(/url\((["']?)\/([^"')]*)\1\)/g, (match, quote, url) => {
+      if (url.startsWith(`${projectSlug}/`)) {
+         return match
+      }
+      if (/^(https?|mailto|tel|data):/.test(url)) {
+         return match
+      }
+      return `url(${quote}${projectSlugPrefix}${url}${quote})`
+   })
+   
+   return htmlContent
 }
 
 // Mapeamento de extensões para Content-Type
@@ -213,6 +272,22 @@ app.use(async (req: Request, res: Response) => {
                
                console.log(`📄 HTML processed, base tag should be: ${baseTag}`)
                res.send(htmlContent)
+            })
+            
+            file.stream.on('error', (error) => {
+               console.error('Stream error:', error)
+               res.status(500).send('Error reading file')
+            })
+         } else if (file.contentType === 'text/css') {
+            // Para arquivos CSS, processar URLs absolutas
+            let cssContent = ''
+            file.stream.on('data', (chunk) => {
+               cssContent += chunk.toString()
+            })
+            
+            file.stream.on('end', () => {
+               cssContent = replaceAbsoluteUrlsInCSS(cssContent, projectSlug)
+               res.send(cssContent)
             })
             
             file.stream.on('error', (error) => {
