@@ -102,26 +102,52 @@ app.use(async (req: Request, res: Response) => {
    // Extrair projectSlug do path ao invés do subdomínio
    // Ex: /projeto1/ -> projectSlug = projeto1
    // Ex: /projeto1/index.html -> projectSlug = projeto1, filePath = /index.html
-   const pathParts = req.path.split('/').filter(Boolean)
+   // Ex: /projeto1 -> projectSlug = projeto1, filePath = /index.html
+   
+   let path = req.path
+   
+   // Remover query string se houver
+   path = path.split('?')[0]
+   
+   // Garantir que comece com /
+   if (!path.startsWith('/')) {
+      path = '/' + path
+   }
+   
+   // Normalizar: remover trailing slash exceto se for apenas /
+   // /projeto1/ -> /projeto1
+   // /projeto1 -> /projeto1
+   if (path.length > 1 && path.endsWith('/')) {
+      path = path.slice(0, -1)
+   }
+   
+   const pathParts = path.split('/').filter(Boolean)
    const projectSlug = pathParts[0]
    
    // Se não houver projectSlug, retornar 404
    if (!projectSlug) {
+      console.log('❌ No projectSlug found in path:', req.path)
       res.status(404).send('Project not found')
       return
    }
 
    // Remover o projectSlug do path para construir o caminho do arquivo
-   const filePath = '/' + pathParts.slice(1).join('/') || '/index.html'
-   const cleanFilePath = filePath === '/' ? '/index.html' : filePath.split('?')[0]
+   // Se não houver mais nada, usar /index.html
+   const filePath = pathParts.length > 1 
+      ? '/' + pathParts.slice(1).join('/')
+      : '/index.html'
    
+   const cleanFilePath = filePath === '/' ? '/index.html' : filePath.split('?')[0]
    const objectName = `__outputs/${projectSlug}${cleanFilePath}`.replace(/\/+/g, '/')
+
+   console.log(`📁 Request: ${req.path} -> projectSlug: ${projectSlug}, filePath: ${cleanFilePath}, objectName: ${objectName}`)
 
    try {
       // Tentar buscar o arquivo
       const file = await getFileFromMinIO(MINIO_BUCKET, objectName)
 
       if (file) {
+         console.log(`✅ File found: ${objectName}`)
          // Configurar headers apropriados
          res.setHeader('Content-Type', file.contentType)
          res.setHeader('Cache-Control', 'public, max-age=31536000, immutable')
@@ -138,10 +164,10 @@ app.use(async (req: Request, res: Response) => {
                const baseTag = `<base href="/${projectSlug}/">`
                if (htmlContent.includes('<base')) {
                   // Substituir base tag existente
-                  htmlContent = htmlContent.replace(/<base[^>]*>/, baseTag)
+                  htmlContent = htmlContent.replace(/<base[^>]*>/i, baseTag)
                } else {
-                  // Adicionar base tag após <head>
-                  htmlContent = htmlContent.replace('<head>', `<head>${baseTag}`)
+                  // Adicionar base tag após <head> (case-insensitive)
+                  htmlContent = htmlContent.replace(/<head>/i, `<head>${baseTag}`)
                }
                res.send(htmlContent)
             })
@@ -157,12 +183,16 @@ app.use(async (req: Request, res: Response) => {
          return
       }
 
+      console.log(`⚠️ File not found: ${objectName}`)
+
       // Se não encontrou e não é index.html, tentar index.html (SPA routing)
       if (cleanFilePath !== '/index.html') {
          const indexObjectName = `__outputs/${projectSlug}/index.html`
+         console.log(`🔄 Trying index.html: ${indexObjectName}`)
          const indexFile = await getFileFromMinIO(MINIO_BUCKET, indexObjectName)
 
          if (indexFile) {
+            console.log(`✅ Index file found: ${indexObjectName}`)
             res.setHeader('Content-Type', indexFile.contentType)
             res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate')
             
@@ -175,9 +205,9 @@ app.use(async (req: Request, res: Response) => {
                // Adicionar base tag para SPA routing
                const baseTag = `<base href="/${projectSlug}/">`
                if (htmlContent.includes('<base')) {
-                  htmlContent = htmlContent.replace(/<base[^>]*>/, baseTag)
+                  htmlContent = htmlContent.replace(/<base[^>]*>/i, baseTag)
                } else {
-                  htmlContent = htmlContent.replace('<head>', `<head>${baseTag}`)
+                  htmlContent = htmlContent.replace(/<head>/i, `<head>${baseTag}`)
                }
                res.send(htmlContent)
             })
@@ -191,6 +221,7 @@ app.use(async (req: Request, res: Response) => {
       }
 
       // 404
+      console.log(`❌ 404: ${objectName}`)
       res.status(404).send('Project not found')
    } catch (error: any) {
       console.error('Error serving file:', error)
