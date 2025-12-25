@@ -1,10 +1,11 @@
-import express, { Request, Response }	 from 'express'
+import express, { Request, Response } from 'express'
 import dotenv from 'dotenv'
 import Redis from 'ioredis'
 import cors from 'cors'
 import { Server } from 'socket.io'
 import Docker from 'dockerode'
 import { generateSlug } from 'random-word-slugs'
+import http from 'http'
 
 dotenv.config()
 
@@ -25,9 +26,14 @@ const DOMAIN = process.env.DOMAIN || 'localhost'
 
 const app = express()
 
+const httpServer = http.createServer(app)
+
 const subscriber = new Redis(REDIS_URL)
 
-const io = new Server({ cors: { origin: '*' } })
+const io = new Server(httpServer, {
+   cors: { origin: '*' },
+   path: '/socket.io'
+})
 
 io.on('connection', (socket) => {
    socket.on('subscribe', (channel: string) => {
@@ -35,8 +41,6 @@ io.on('connection', (socket) => {
       socket.emit('message', `Joined ${channel}`)
    })
 })
-
-io.listen(9002)
 
 const docker = new Docker({
    socketPath: DOCKER_SOCKET
@@ -73,7 +77,7 @@ app.post('/new-project', async (req: Request<{}, {}, ProjectRequest>, res: Respo
          AttachStdout: true, // !!!
          AttachStderr: true // !!!
       })
-      
+
       await container.start()
       console.log(`🚀 Container iniciado: ${container.id}`)
 
@@ -86,7 +90,7 @@ app.post('/new-project', async (req: Request<{}, {}, ProjectRequest>, res: Respo
       })
    } catch (error: any) {
       console.error(`Erro ao executar Docker: ${error}`)
-      
+
       return res.status(500).json({
          status: 'error',
          message: 'Falha ao iniciar build',
@@ -105,4 +109,7 @@ async function initRedisSubscribe() {
 
 initRedisSubscribe()
 
-app.listen(PORT, () => console.log(`API Server Running on port ${PORT}`))
+httpServer.listen(PORT, () => {
+   console.log(`API Server Running on port ${PORT}`)
+   console.log(`Socket Server Running at /socket.io`)
+})
