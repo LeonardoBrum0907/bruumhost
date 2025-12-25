@@ -162,13 +162,34 @@ app.use(async (req: Request, res: Response) => {
             file.stream.on('end', () => {
                // Adicionar base tag se não existir, ou substituir se existir
                const baseTag = `<base href="/${projectSlug}/">`
-               if (htmlContent.includes('<base')) {
+               
+               // Verificar se já existe uma tag base (case-insensitive, com espaços)
+               const baseTagRegex = /<base\s+[^>]*href\s*=\s*["'][^"']*["'][^>]*>/i
+               if (baseTagRegex.test(htmlContent)) {
                   // Substituir base tag existente
-                  htmlContent = htmlContent.replace(/<base[^>]*>/i, baseTag)
+                  htmlContent = htmlContent.replace(baseTagRegex, baseTag)
+                  console.log(`✅ Replaced existing base tag with: ${baseTag}`)
                } else {
-                  // Adicionar base tag após <head> (case-insensitive)
-                  htmlContent = htmlContent.replace(/<head>/i, `<head>${baseTag}`)
+                  // Buscar por <head> ou <head com atributos (case-insensitive)
+                  const headTagRegex = /<head[^>]*>/i
+                  if (headTagRegex.test(htmlContent)) {
+                     // Substituir <head> por <head><base href="...">
+                     htmlContent = htmlContent.replace(headTagRegex, (match) => `${match}\n    ${baseTag}`)
+                     console.log(`✅ Added base tag after head: ${baseTag}`)
+                  } else {
+                     // Se não tem <head>, tentar adicionar antes de </head> ou no início
+                     if (htmlContent.includes('</head>')) {
+                        htmlContent = htmlContent.replace('</head>', `    ${baseTag}\n</head>`)
+                        console.log(`✅ Added base tag before closing head: ${baseTag}`)
+                     } else {
+                        // Último recurso: adicionar no início do HTML
+                        htmlContent = baseTag + '\n' + htmlContent
+                        console.log(`⚠️ Added base tag at the beginning (no head found): ${baseTag}`)
+                     }
+                  }
                }
+               
+               console.log(`📄 HTML processed, base tag should be: ${baseTag}`)
                res.send(htmlContent)
             })
             
@@ -204,11 +225,34 @@ app.use(async (req: Request, res: Response) => {
             indexFile.stream.on('end', () => {
                // Adicionar base tag para SPA routing
                const baseTag = `<base href="/${projectSlug}/">`
-               if (htmlContent.includes('<base')) {
-                  htmlContent = htmlContent.replace(/<base[^>]*>/i, baseTag)
+               
+               // Verificar se já existe uma tag base (case-insensitive, com espaços)
+               const baseTagRegex = /<base\s+[^>]*href\s*=\s*["'][^"']*["'][^>]*>/i
+               if (baseTagRegex.test(htmlContent)) {
+                  // Substituir base tag existente
+                  htmlContent = htmlContent.replace(baseTagRegex, baseTag)
+                  console.log(`✅ Replaced existing base tag with: ${baseTag}`)
                } else {
-                  htmlContent = htmlContent.replace(/<head>/i, `<head>${baseTag}`)
+                  // Buscar por <head> ou <head com atributos (case-insensitive)
+                  const headTagRegex = /<head[^>]*>/i
+                  if (headTagRegex.test(htmlContent)) {
+                     // Substituir <head> por <head><base href="...">
+                     htmlContent = htmlContent.replace(headTagRegex, (match) => `${match}\n    ${baseTag}`)
+                     console.log(`✅ Added base tag after head: ${baseTag}`)
+                  } else {
+                     // Se não tem <head>, tentar adicionar antes de </head> ou no início
+                     if (htmlContent.includes('</head>')) {
+                        htmlContent = htmlContent.replace('</head>', `    ${baseTag}\n</head>`)
+                        console.log(`✅ Added base tag before closing head: ${baseTag}`)
+                     } else {
+                        // Último recurso: adicionar no início do HTML
+                        htmlContent = baseTag + '\n' + htmlContent
+                        console.log(`⚠️ Added base tag at the beginning (no head found): ${baseTag}`)
+                     }
+                  }
                }
+               
+               console.log(`📄 HTML processed for SPA routing, base tag should be: ${baseTag}`)
                res.send(htmlContent)
             })
             
