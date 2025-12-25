@@ -99,23 +99,12 @@ async function getPresignedUrl(bucketName: string, objectName: string, contentTy
 }
 
 app.use(async (req: Request, res: Response) => {
-   // Extrair projectSlug do path ao invés do subdomínio
-   // Ex: /projeto1/ -> projectSlug = projeto1
-   // Ex: /projeto1/index.html -> projectSlug = projeto1, filePath = /index.html
-   const pathParts = req.path.split('/').filter(Boolean)
-   const projectSlug = pathParts[0]
-   
-   // Se não houver projectSlug, retornar 404
-   if (!projectSlug) {
-      res.status(404).send('Project not found')
-      return
-   }
+   const hostname = req.hostname
+   const subdomain = hostname.split('.')[0]
 
-   // Remover o projectSlug do path para construir o caminho do arquivo
-   const filePath = '/' + pathParts.slice(1).join('/') || '/index.html'
-   const cleanFilePath = filePath === '/' ? '/index.html' : filePath.split('?')[0]
-   
-   const objectName = `__outputs/${projectSlug}${cleanFilePath}`.replace(/\/+/g, '/')
+   let filePath = req.url === '/' ? '/index.html' : req.url
+   filePath = filePath.split('?')[0]
+   const objectName = `__outputs/${subdomain}${filePath}`.replace(/\/+/g, '/')
 
    try {
       // Tentar buscar o arquivo
@@ -126,23 +115,17 @@ app.use(async (req: Request, res: Response) => {
          res.setHeader('Content-Type', file.contentType)
          res.setHeader('Cache-Control', 'public, max-age=31536000, immutable')
          
-         // Para arquivos HTML, adicionar base tag para corrigir URLs relativas
+         // Para arquivos HTML, adicionar base tag ou modificar URLs relativas
          if (file.contentType === 'text/html') {
+            // Pipe do stream com possível modificação do HTML
             let htmlContent = ''
             file.stream.on('data', (chunk) => {
                htmlContent += chunk.toString()
             })
             
             file.stream.on('end', () => {
-               // Adicionar base tag se não existir, ou substituir se existir
-               const baseTag = `<base href="/${projectSlug}/">`
-               if (htmlContent.includes('<base')) {
-                  // Substituir base tag existente
-                  htmlContent = htmlContent.replace(/<base[^>]*>/, baseTag)
-               } else {
-                  // Adicionar base tag após <head>
-                  htmlContent = htmlContent.replace('<head>', `<head>${baseTag}`)
-               }
+               // Garantir que URLs relativas funcionem corretamente
+               // Não precisamos modificar nada se as URLs já forem relativas
                res.send(htmlContent)
             })
             
@@ -158,8 +141,8 @@ app.use(async (req: Request, res: Response) => {
       }
 
       // Se não encontrou e não é index.html, tentar index.html (SPA routing)
-      if (cleanFilePath !== '/index.html') {
-         const indexObjectName = `__outputs/${projectSlug}/index.html`
+      if (filePath !== '/index.html') {
+         const indexObjectName = `__outputs/${subdomain}/index.html`
          const indexFile = await getFileFromMinIO(MINIO_BUCKET, indexObjectName)
 
          if (indexFile) {
@@ -172,13 +155,6 @@ app.use(async (req: Request, res: Response) => {
             })
             
             indexFile.stream.on('end', () => {
-               // Adicionar base tag para SPA routing
-               const baseTag = `<base href="/${projectSlug}/">`
-               if (htmlContent.includes('<base')) {
-                  htmlContent = htmlContent.replace(/<base[^>]*>/, baseTag)
-               } else {
-                  htmlContent = htmlContent.replace('<head>', `<head>${baseTag}`)
-               }
                res.send(htmlContent)
             })
             
