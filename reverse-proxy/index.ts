@@ -35,7 +35,8 @@ function replaceAbsoluteUrlsInCSS(cssContent: string, projectSlug: string): stri
    const projectSlugPrefix = `/${projectSlug}/`
    
    // Substituir URLs absolutas em url() no CSS
-   return cssContent.replace(/url\((["']?)\/([^"')]*)\1\)/g, (match, quote, url) => {
+   let replacedCount = 0
+   const result = cssContent.replace(/url\((["']?)\/([^"')]*)\1\)/g, (match, quote, url) => {
       // Se a URL já começa com projectSlug, não substituir
       if (url.startsWith(`${projectSlug}/`)) {
          return match
@@ -45,8 +46,15 @@ function replaceAbsoluteUrlsInCSS(cssContent: string, projectSlug: string): stri
          return match
       }
       // Caso contrário, adicionar o projectSlug
+      replacedCount++
       return `url(${quote}${projectSlugPrefix}${url}${quote})`
    })
+   
+   if (replacedCount > 0) {
+      console.log(`✅ CSS processed: replaced ${replacedCount} absolute URLs with ${projectSlugPrefix}`)
+   }
+   
+   return result
 }
 
 // Função para substituir URLs absolutas por relativas ao projectSlug
@@ -202,10 +210,21 @@ app.use(async (req: Request, res: Response) => {
    const pathParts = path.split('/').filter(Boolean)
    const projectSlug = pathParts[0]
    
+   // Lista de paths conhecidos que não são projectSlugs (são assets/recursos comuns)
+   const knownAssetPaths = ['assets', 'static', '_next', 'dist', 'build', 'public', 'images', 'img', 'css', 'js', 'fonts']
+   
    // Se não houver projectSlug, retornar 404
    if (!projectSlug) {
       console.log('❌ No projectSlug found in path:', req.path)
       res.status(404).send('Project not found')
+      return
+   }
+   
+   // Se o primeiro segmento do path é um caminho de asset conhecido, provavelmente é uma requisição incorreta
+   // Isso indica que o CSS/HTML não foi processado corretamente
+   if (knownAssetPaths.includes(projectSlug.toLowerCase())) {
+      console.log(`⚠️ Request to asset path without projectSlug: ${req.path} - This suggests CSS/HTML processing failed`)
+      res.status(404).send('Asset not found. Please ensure the project slug is in the URL path.')
       return
    }
 
@@ -225,7 +244,7 @@ app.use(async (req: Request, res: Response) => {
       const file = await getFileFromMinIO(MINIO_BUCKET, objectName)
 
       if (file) {
-         console.log(`✅ File found: ${objectName}`)
+         console.log(`✅ File found: ${objectName}, contentType: ${file.contentType}`)
          // Configurar headers apropriados
          res.setHeader('Content-Type', file.contentType)
          res.setHeader('Cache-Control', 'public, max-age=31536000, immutable')
@@ -278,8 +297,9 @@ app.use(async (req: Request, res: Response) => {
                console.error('Stream error:', error)
                res.status(500).send('Error reading file')
             })
-         } else if (file.contentType === 'text/css') {
+         } else if (file.contentType === 'text/css' || file.contentType?.includes('css') || cleanFilePath.endsWith('.css')) {
             // Para arquivos CSS, processar URLs absolutas
+            console.log(`🎨 Processing CSS file: ${objectName} (contentType: ${file.contentType})`)
             let cssContent = ''
             file.stream.on('data', (chunk) => {
                cssContent += chunk.toString()
