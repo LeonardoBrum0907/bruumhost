@@ -23,7 +23,7 @@ const MINIO_ACCESS_KEY = process.env.MINIO_ACCESS_KEY!
 const MINIO_SECRET_KEY = process.env.MINIO_SECRET_KEY!
 const MINIO_BUCKET = process.env.MINIO_BUCKET!
 const REVERSE_PROXY_DOMAIN = process.env.REVERSE_PROXY_DOMAIN || 'k0wwcs0ks8ogog840oo80gc8.edumudu.dev'
-const USE_HTTPS = process.env.USE_HTTPS === 'false'
+const USE_HTTPS = process.env.USE_HTTPS !== 'false'
 
 const app = express()
 
