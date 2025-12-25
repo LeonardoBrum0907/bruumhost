@@ -22,7 +22,8 @@ const MINIO_ENDPOINT = process.env.MINIO_ENDPOINT!
 const MINIO_ACCESS_KEY = process.env.MINIO_ACCESS_KEY!
 const MINIO_SECRET_KEY = process.env.MINIO_SECRET_KEY!
 const MINIO_BUCKET = process.env.MINIO_BUCKET!
-const DOMAIN = process.env.DOMAIN || 'localhost'
+const REVERSE_PROXY_DOMAIN = process.env.REVERSE_PROXY_DOMAIN || 'k0wwcs0ks8ogog840oo80gc8.edumudu.dev'
+const USE_HTTPS = process.env.USE_HTTPS === 'false'
 
 const app = express()
 
@@ -81,11 +82,14 @@ app.post('/new-project', async (req: Request<{}, {}, ProjectRequest>, res: Respo
       await container.start()
       console.log(`🚀 Container iniciado: ${container.id}`)
 
+      const protocol = USE_HTTPS ? 'https' : 'http'
+      const previewURL = `${protocol}://${projectSlug}.${REVERSE_PROXY_DOMAIN}`
+
       return res.json({
          status: 'queued',
          data: {
             projectSlug,
-            url: `http://${projectSlug}.${DOMAIN}:8000`
+            url: previewURL
          }
       })
    } catch (error: any) {
