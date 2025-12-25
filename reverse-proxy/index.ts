@@ -30,6 +30,25 @@ const minioClient = new Minio.Client({
    secretKey: MINIO_SECRET_KEY
 })
 
+// Função para substituir URLs absolutas por relativas ao projectSlug
+function replaceAbsoluteUrls(htmlContent: string, projectSlug: string): string {
+   const projectSlugPrefix = `/${projectSlug}/`
+   // Substituir href="/... e src="/... por href="/${projectSlug}/... e src="/${projectSlug}/...
+   // Mas evitar substituir se a URL já começar com /${projectSlug}/ ou for um protocolo (http://, https://, etc.)
+   return htmlContent.replace(/(href|src)=(["'])\/([^"']*)/g, (match, attr, quote, url) => {
+      // Se a URL já começa com projectSlug, não substituir
+      if (url.startsWith(`${projectSlug}/`)) {
+         return match
+      }
+      // Se for um protocolo (http, https, mailto, tel, data), não substituir
+      if (/^(https?|mailto|tel|data):/.test(url)) {
+         return match
+      }
+      // Caso contrário, adicionar o projectSlug
+      return `${attr}=${quote}${projectSlugPrefix}${url}`
+   })
+}
+
 // Mapeamento de extensões para Content-Type
 function getContentType(filePath: string): string {
    const ext = filePath.split('.').pop()?.toLowerCase()
@@ -189,6 +208,9 @@ app.use(async (req: Request, res: Response) => {
                   }
                }
                
+               // Substituir URLs absolutas por relativas ao projectSlug
+               htmlContent = replaceAbsoluteUrls(htmlContent, projectSlug)
+               
                console.log(`📄 HTML processed, base tag should be: ${baseTag}`)
                res.send(htmlContent)
             })
@@ -251,6 +273,9 @@ app.use(async (req: Request, res: Response) => {
                      }
                   }
                }
+               
+               // Substituir URLs absolutas por relativas ao projectSlug
+               htmlContent = replaceAbsoluteUrls(htmlContent, projectSlug)
                
                console.log(`📄 HTML processed for SPA routing, base tag should be: ${baseTag}`)
                res.send(htmlContent)
