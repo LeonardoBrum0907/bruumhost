@@ -83,12 +83,12 @@ app.post('/new-project', async (req: Request<{}, {}, ProjectRequest>, res: Respo
       console.log(`🚀 Container iniciado: ${container.id}`)
 
       const protocol = USE_HTTPS ? 'https' : 'http'
-      const previewURL = `https://${REVERSE_PROXY_DOMAIN}/${projectSlug}`
+      const previewURL = `${protocol}://${REVERSE_PROXY_DOMAIN}/${projectSlug}`
 
       return res.json({
          status: 'queued',
          data: {
-            projectSlug,
+            projectSlug, 
             url: previewURL
          }
       })
