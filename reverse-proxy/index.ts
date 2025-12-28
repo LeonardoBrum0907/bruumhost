@@ -64,13 +64,18 @@ function replaceAbsoluteUrls(htmlContent: string, projectSlug: string): string {
    console.log(`🔄 Processing HTML URLs for projectSlug: ${projectSlug}`)
    let replacementCount = 0
    
-   // Substituir URLs absolutas em diferentes formatos:
-   // 1. href="/..." e src="/..." (atributos HTML)
-   // 2. srcset="/..." (atributo srcset)
-   // 3. url("/...") e url('/...') (CSS)
+   // Log de amostra do HTML para debug (primeiros 500 chars)
+   const sample = htmlContent.substring(0, 500).replace(/\n/g, ' ')
+   console.log(`📝 HTML sample: ${sample}...`)
    
-   // 1. Substituir em atributos href e src
-   htmlContent = htmlContent.replace(/(href|src)\s*=\s*(["'])\/([^"']*)(["'])/g, (match, attr, openQuote, url, closeQuote) => {
+   // Substituir URLs absolutas em diferentes formatos:
+   // 1. href="/..." e src="/..." (atributos HTML) - com aspas
+   // 2. href=/... e src=/... (atributos HTML) - sem aspas
+   // 3. srcset="/..." (atributo srcset)
+   // 4. url("/...") e url('/...') (CSS inline)
+   
+   // 1. Substituir em atributos href e src COM ASPAS (simples ou duplas)
+   htmlContent = htmlContent.replace(/(href|src)\s*=\s*(["'])\/([^"']*)(["'])/gi, (match, attr, openQuote, url, closeQuote) => {
       // Se a URL já começa com projectSlug, não substituir
       if (url.startsWith(`${projectSlug}/`)) {
          return match
@@ -81,11 +86,27 @@ function replaceAbsoluteUrls(htmlContent: string, projectSlug: string): string {
       }
       // Caso contrário, adicionar o projectSlug
       replacementCount++
+      console.log(`  🔄 Replacing: ${attr}="${url}" -> ${attr}="${projectSlugPrefix}${url}"`)
       return `${attr}=${openQuote}${projectSlugPrefix}${url}${closeQuote}`
    })
    
-   // 2. Substituir em atributo srcset (pode ter múltiplas URLs)
-   htmlContent = htmlContent.replace(/srcset\s*=\s*(["'])([^"']*)(["'])/g, (match, openQuote, srcsetValue, closeQuote) => {
+   // 2. Substituir em atributos href e src SEM ASPAS (HTML antigo)
+   htmlContent = htmlContent.replace(/(href|src)\s*=\s*\/([^\s>]*)/gi, (match, attr, url) => {
+      // Se a URL já começa com projectSlug, não substituir
+      if (url.startsWith(`${projectSlug}/`)) {
+         return match
+      }
+      // Se for um protocolo, não substituir
+      if (/^(https?|mailto|tel|data):/.test(url)) {
+         return match
+      }
+      replacementCount++
+      console.log(`  🔄 Replacing (no quotes): ${attr}=/${url} -> ${attr}="${projectSlugPrefix}${url}"`)
+      return `${attr}="${projectSlugPrefix}${url}"`
+   })
+   
+   // 3. Substituir em atributo srcset (pode ter múltiplas URLs)
+   htmlContent = htmlContent.replace(/srcset\s*=\s*(["'])([^"']*)(["'])/gi, (match, openQuote, srcsetValue, closeQuote) => {
       const urls = srcsetValue.split(',').map((urlPart: string) => {
          const trimmed = urlPart.trim()
          // srcset pode ter formato "url width" ou "url 2x"
@@ -99,6 +120,7 @@ function replaceAbsoluteUrls(htmlContent: string, projectSlug: string): string {
             }
             // Adicionar projectSlug
             replacementCount++
+            console.log(`  🔄 Replacing srcset: ${url} -> ${projectSlugPrefix}${url.substring(1)}`)
             const newUrl = `${projectSlugPrefix}${url.substring(1)}`
             return parts.length > 1 ? `${newUrl} ${parts.slice(1).join(' ')}` : newUrl
          }
@@ -107,8 +129,8 @@ function replaceAbsoluteUrls(htmlContent: string, projectSlug: string): string {
       return `srcset=${openQuote}${urls.join(', ')}${closeQuote}`
    })
    
-   // 3. Substituir em CSS url() (dentro de style tags ou atributos)
-   htmlContent = htmlContent.replace(/url\((["']?)\/([^"')]*)\1\)/g, (match, quote, url) => {
+   // 4. Substituir em CSS url() (dentro de style tags ou atributos inline)
+   htmlContent = htmlContent.replace(/url\(\s*(["']?)\/([^"')]*)\1\s*\)/gi, (match, quote, url) => {
       if (url.startsWith(`${projectSlug}/`)) {
          return match
       }
@@ -116,13 +138,58 @@ function replaceAbsoluteUrls(htmlContent: string, projectSlug: string): string {
          return match
       }
       replacementCount++
+      console.log(`  🔄 Replacing url(): /${url} -> ${projectSlugPrefix}${url}`)
       return `url(${quote}${projectSlugPrefix}${url}${quote})`
    })
    
-   if (replacementCount > 0) {
-      console.log(`✅ HTML processed: replaced ${replacementCount} absolute URLs with projectSlug prefix`)
-   } else {
-      console.log(`⚠️ HTML processed: no absolute URLs found to replace (this might be expected for some pages)`)
+   // 5. Substituir data-src e data-href (lazy loading)
+   htmlContent = htmlContent.replace(/(data-src|data-href)\s*=\s*(["'])\/([^"']*)(["'])/gi, (match, attr, openQuote, url, closeQuote) => {
+      if (url.startsWith(`${projectSlug}/`)) {
+         return match
+      }
+      if (/^(https?|mailto|tel|data):/.test(url)) {
+         return match
+      }
+      replacementCount++
+      console.log(`  🔄 Replacing ${attr}: /${url} -> ${projectSlugPrefix}${url}`)
+      return `${attr}=${openQuote}${projectSlugPrefix}${url}${closeQuote}`
+   })
+   
+   // 6. FORÇAR base tag a ser usada - substituir URLs relativas que comecem com assets/
+   // Isso captura casos onde o HTML tem: src="assets/..." em vez de src="/assets/..."
+   htmlContent = htmlContent.replace(/(href|src|data-src)\s*=\s*(["'])(assets\/[^"']*)(["'])/gi, (match, attr, openQuote, url, closeQuote) => {
+      // Verificar se não é uma URL completa
+      if (url.startsWith('http') || url.startsWith('//')) {
+         return match
+      }
+      replacementCount++
+      console.log(`  🔄 Replacing relative: ${attr}="${url}" -> ${attr}="${projectSlugPrefix}${url}"`)
+      return `${attr}=${openQuote}${projectSlugPrefix}${url}${closeQuote}`
+   })
+   
+   // 7. Também capturar outras pastas comuns (dist, build, public, static, images, img, css, js, fonts)
+   const commonFolders = ['dist', 'build', 'public', 'static', 'images', 'img', 'css', 'js', 'fonts', 'media']
+   for (const folder of commonFolders) {
+      const pattern = new RegExp(`(href|src|data-src)\\s*=\\s*(["'])(${folder}\\/[^"']*)\\2`, 'gi')
+      htmlContent = htmlContent.replace(pattern, (match, attr, openQuote, url) => {
+         // Verificar se não é uma URL completa
+         if (url.startsWith('http') || url.startsWith('//') || url.startsWith(`${projectSlug}/`)) {
+            return match
+         }
+         replacementCount++
+         console.log(`  🔄 Replacing relative (${folder}): ${attr}="${url}" -> ${attr}="${projectSlugPrefix}${url}"`)
+         return `${attr}=${openQuote}${projectSlugPrefix}${url}${openQuote}`
+      })
+   }
+   
+   console.log(`📊 HTML processing complete: ${replacementCount} URLs replaced with /${projectSlug}/ prefix`)
+   
+   if (replacementCount === 0) {
+      console.log(`⚠️ WARNING: No absolute URLs were replaced! This is unusual and suggests:`)
+      console.log(`   1. URLs might be relative (no leading /)`)
+      console.log(`   2. URLs might be in JavaScript variables`)
+      console.log(`   3. The HTML format is different than expected`)
+      console.log(`   Sample of HTML being processed: ${htmlContent.substring(0, 300)}...`)
    }
    
    return htmlContent
