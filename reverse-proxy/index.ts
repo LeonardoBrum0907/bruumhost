@@ -60,14 +60,20 @@ function replaceAbsoluteUrlsInCSS(cssContent: string, projectSlug: string): stri
 // Função para substituir URLs absolutas por relativas ao projectSlug
 function replaceAbsoluteUrls(htmlContent: string, projectSlug: string): string {
    const projectSlugPrefix = `/${projectSlug}/`
+   let replacedCount = 0
    
    // Substituir URLs absolutas em diferentes formatos:
    // 1. href="/..." e src="/..." (atributos HTML)
    // 2. srcset="/..." (atributo srcset)
-   // 3. url("/...") e url('/...') (CSS)
+   // 3. url("/...") e url('/...') (CSS inline)
    
    // 1. Substituir em atributos href e src
-   htmlContent = htmlContent.replace(/(href|src)=(["'])\/([^"']*)/g, (match, attr, quote, url) => {
+   // Captura: href="/path" ou href='/path' ou href="/path" ou href="/path query"
+   htmlContent = htmlContent.replace(/(href|src)\s*=\s*(["'])\/([^"']*)\2/gi, (match, attr, quote, url) => {
+      // Se a URL está vazia, não substituir
+      if (!url || url.trim() === '') {
+         return match
+      }
       // Se a URL já começa com projectSlug, não substituir
       if (url.startsWith(`${projectSlug}/`)) {
          return match
@@ -77,7 +83,9 @@ function replaceAbsoluteUrls(htmlContent: string, projectSlug: string): string {
          return match
       }
       // Caso contrário, adicionar o projectSlug
-      return `${attr}=${quote}${projectSlugPrefix}${url}`
+      replacedCount++
+      const newUrl = `${projectSlugPrefix}${url}`
+      return `${attr}=${quote}${newUrl}${quote}`
    })
    
    // 2. Substituir em atributo srcset (pode ter múltiplas URLs)
@@ -103,15 +111,20 @@ function replaceAbsoluteUrls(htmlContent: string, projectSlug: string): string {
    })
    
    // 3. Substituir em CSS url() (dentro de style tags ou atributos)
-   htmlContent = htmlContent.replace(/url\((["']?)\/([^"')]*)\1\)/g, (match, quote, url) => {
+   htmlContent = htmlContent.replace(/url\s*\(\s*(["']?)\/([^"')]*)\1\s*\)/gi, (match, quote, url) => {
       if (url.startsWith(`${projectSlug}/`)) {
          return match
       }
       if (/^(https?|mailto|tel|data):/.test(url)) {
          return match
       }
+      replacedCount++
       return `url(${quote}${projectSlugPrefix}${url}${quote})`
    })
+   
+   if (replacedCount > 0) {
+      console.log(`✅ HTML processed: replaced ${replacedCount} absolute URLs with ${projectSlugPrefix}`)
+   }
    
    return htmlContent
 }
@@ -185,55 +198,79 @@ async function getPresignedUrl(bucketName: string, objectName: string, contentTy
 }
 
 app.use(async (req: Request, res: Response) => {
-   // Extrair projectSlug do path ao invés do subdomínio
-   // Ex: /projeto1/ -> projectSlug = projeto1
-   // Ex: /projeto1/index.html -> projectSlug = projeto1, filePath = /index.html
-   // Ex: /projeto1 -> projectSlug = projeto1, filePath = /index.html
+   // Suportar tanto subdomain-based quanto path-based routing
+   // Subdomain: projeto1.leobrum.run -> projectSlug = projeto1
+   // Path: leobrum.run/projeto1/ -> projectSlug = projeto1
    
-   let path = req.path
+   const hostname = req.hostname
+   let projectSlug: string | null = null
+   let filePath = req.path
    
-   // Remover query string se houver
-   path = path.split('?')[0]
-   
-   // Garantir que comece com /
-   if (!path.startsWith('/')) {
-      path = '/' + path
+   // Tentar extrair projectSlug do subdomínio primeiro
+   // Ex: projeto1.leobrum.run -> projeto1
+   // Ex: leobrum.run -> null (sem subdomínio)
+   const hostnameParts = hostname.split('.')
+   if (hostnameParts.length > 2) {
+      // Tem subdomínio (projeto1.leobrum.run -> ['projeto1', 'leobrum', 'run'])
+      projectSlug = hostnameParts[0]
+      console.log(`🌐 Subdomain-based routing detected: ${hostname} -> projectSlug: ${projectSlug}`)
    }
    
-   // Normalizar: remover trailing slash exceto se for apenas /
-   // /projeto1/ -> /projeto1
-   // /projeto1 -> /projeto1
-   if (path.length > 1 && path.endsWith('/')) {
-      path = path.slice(0, -1)
+   // Se não encontrou no subdomínio, tentar extrair do path
+   if (!projectSlug) {
+      let path = req.path
+      
+      // Remover query string se houver
+      path = path.split('?')[0]
+      
+      // Garantir que comece com /
+      if (!path.startsWith('/')) {
+         path = '/' + path
+      }
+      
+      // Normalizar: remover trailing slash exceto se for apenas /
+      if (path.length > 1 && path.endsWith('/')) {
+         path = path.slice(0, -1)
+      }
+      
+      const pathParts = path.split('/').filter(Boolean)
+      projectSlug = pathParts[0] || null
+      
+      if (projectSlug) {
+         // Remover o projectSlug do path para construir o caminho do arquivo
+         filePath = pathParts.length > 1 
+            ? '/' + pathParts.slice(1).join('/')
+            : '/index.html'
+         
+         console.log(`📂 Path-based routing detected: ${req.path} -> projectSlug: ${projectSlug}, filePath: ${filePath}`)
+      }
+   } else {
+      // Subdomain-based: filePath é o path completo
+      filePath = req.path === '/' ? '/index.html' : req.path.split('?')[0]
    }
-   
-   const pathParts = path.split('/').filter(Boolean)
-   const projectSlug = pathParts[0]
    
    // Lista de paths conhecidos que não são projectSlugs (são assets/recursos comuns)
-   const knownAssetPaths = ['assets', 'static', '_next', 'dist', 'build', 'public', 'images', 'img', 'css', 'js', 'fonts']
+   const knownAssetPaths = ['assets', 'static', '_next', 'dist', 'build', 'public', 'images', 'img', 'css', 'js', 'fonts', 'favicon.ico']
    
    // Se não houver projectSlug, retornar 404
    if (!projectSlug) {
-      console.log('❌ No projectSlug found in path:', req.path)
+      console.log(`❌ No projectSlug found in hostname (${hostname}) or path (${req.path})`)
       res.status(404).send('Project not found')
       return
    }
    
-   // Se o primeiro segmento do path é um caminho de asset conhecido, provavelmente é uma requisição incorreta
-   // Isso indica que o CSS/HTML não foi processado corretamente
-   if (knownAssetPaths.includes(projectSlug.toLowerCase())) {
-      console.log(`⚠️ Request to asset path without projectSlug: ${req.path} - This suggests CSS/HTML processing failed`)
-      res.status(404).send('Asset not found. Please ensure the project slug is in the URL path.')
-      return
+   // Se estamos usando path-based routing e o primeiro segmento do path é um caminho de asset conhecido,
+   // provavelmente é uma requisição incorreta (os assets devem ter o projectSlug no path)
+   if (hostnameParts.length <= 2) {
+      const pathParts = req.path.split('/').filter(Boolean)
+      if (pathParts.length > 0 && knownAssetPaths.includes(pathParts[0].toLowerCase())) {
+         console.log(`⚠️ Request to asset path without projectSlug: ${req.path} - This suggests CSS/HTML processing failed`)
+         res.status(404).send('Asset not found. Please ensure the project slug is in the URL path or subdomain.')
+         return
+      }
    }
 
-   // Remover o projectSlug do path para construir o caminho do arquivo
-   // Se não houver mais nada, usar /index.html
-   const filePath = pathParts.length > 1 
-      ? '/' + pathParts.slice(1).join('/')
-      : '/index.html'
-   
+   // Garantir que filePath está normalizado
    const cleanFilePath = filePath === '/' ? '/index.html' : filePath.split('?')[0]
    const objectName = `__outputs/${projectSlug}${cleanFilePath}`.replace(/\/+/g, '/')
 
@@ -289,7 +326,7 @@ app.use(async (req: Request, res: Response) => {
                // Substituir URLs absolutas por relativas ao projectSlug
                htmlContent = replaceAbsoluteUrls(htmlContent, projectSlug)
                
-               console.log(`📄 HTML processed, base tag should be: ${baseTag}`)
+               console.log(`📄 HTML processed successfully, base tag: ${baseTag}`)
                res.send(htmlContent)
             })
             
@@ -372,7 +409,7 @@ app.use(async (req: Request, res: Response) => {
                // Substituir URLs absolutas por relativas ao projectSlug
                htmlContent = replaceAbsoluteUrls(htmlContent, projectSlug)
                
-               console.log(`📄 HTML processed for SPA routing, base tag should be: ${baseTag}`)
+               console.log(`📄 HTML processed for SPA routing, base tag: ${baseTag}`)
                res.send(htmlContent)
             })
             
