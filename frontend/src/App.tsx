@@ -4,7 +4,7 @@ import { Button } from './components/ui/button'
 import { io } from 'socket.io-client'
 import LightPillar from './components/LightPillar'
 
-const socket = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:9002')
+const socket = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:9000')
 
 type DeplyStatus = 'idle' | 'building' | 'uploading' | 'success' | 'error'
 
