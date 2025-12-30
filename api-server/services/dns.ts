@@ -23,44 +23,65 @@ interface DNSZoneRecord {
 }
 
 export async function createDNSRecord(subdomain: string, ip: string, ttl: number = 3600): Promise<void> {
-   const currentRecords = await getDNSRecords()
+   try {
+      console.log(`🔍 Criando DNS: ${subdomain}.${DOMAIN} → ${ip}`)
+      
+      const currentRecords = await getDNSRecords()
+      console.log(`✅ Registros obtidos: ${currentRecords.length} registros`)
 
-   const existingRecord = currentRecords.find(
-      (record: DNSZoneRecord) => record.name === subdomain && record.type === 'A'
-   )
+      const cleanRecord = (record: DNSZoneRecord) => ({
+         name: record.name,
+         type: record.type,
+         records: record.records.map(r => ({ content: r.content })),
+         ttl: record.ttl
+      })
 
-   if (existingRecord) {
-      const updatedRecords = currentRecords.map((record: DNSZoneRecord) => {
-         if (record.name === subdomain && record.type === 'A') {
-            return {
-               name: subdomain,
-               type: 'A' as const,
-               records: [{ content: ip }],
-               ttl
+      const existingRecord = currentRecords.find(
+         (record: DNSZoneRecord) => record.name === subdomain && record.type === 'A'
+      )
+
+      let zone: DNSZoneRecord[]
+
+      if (existingRecord) {
+         console.log(`🔄 Atualizando registro existente`)
+         zone = currentRecords.map((record: DNSZoneRecord) => {
+            if (record.name === subdomain && record.type === 'A') {
+               return {
+                  name: subdomain,
+                  type: 'A' as const,
+                  records: [{ content: ip }],
+                  ttl
+               }
             }
+            return cleanRecord(record)
+         })
+      } else {
+         console.log(`➕ Criando novo registro`)
+         const newRecord: DNSZoneRecord = {
+            name: subdomain,
+            type: 'A' as const,
+            records: [{ content: ip }],
+            ttl
          }
 
-         return record
-      })
-
-      await apiClient.put(`/api/dns/v1/zones${DOMAIN}`, {
-         overwrite: true,
-         zone: updatedRecords
-      })
-   } else {
-      const newRecord: DNSZoneRecord = {
-         name: subdomain,
-         type: 'A' as const,
-         records: [{ content: ip }],
-         ttl
+         const cleanRecords = currentRecords.map(cleanRecord)
+         zone = [...cleanRecords, newRecord]
       }
 
-      const zone = [...currentRecords, newRecord]
+      console.log(`📤 Enviando PUT com ${zone.length} registros`)
+      console.log(`📤 Payload:`, JSON.stringify({ overwrite: true, zone }, null, 2))
 
-      await apiClient.put(`/api/dns/v1/zones${DOMAIN}`, {
-         overwrite: false,
+      await apiClient.put(`/api/dns/v1/zones/${DOMAIN}`, {
+         overwrite: true,
          zone
       })
+      
+      console.log(`✅ DNS record criado com sucesso!`)
+   } catch (error: any) {
+      console.error(`❌ Erro ao criar DNS:`, error.response?.data || error.message)
+      console.error(`❌ Status: ${error.response?.status}`)
+      console.error(`❌ Response:`, JSON.stringify(error.response?.data, null, 2))
+      throw error
    }
 }
 
