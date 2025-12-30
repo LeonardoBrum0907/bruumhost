@@ -6,6 +6,7 @@ import { Server } from 'socket.io'
 import Docker from 'dockerode'
 import { generateSlug } from 'random-word-slugs'
 import http from 'http'
+import { createDNSRecord } from './services/dns'
 
 dotenv.config()
 
@@ -23,7 +24,9 @@ const MINIO_ACCESS_KEY = process.env.MINIO_ACCESS_KEY!
 const MINIO_SECRET_KEY = process.env.MINIO_SECRET_KEY!
 const MINIO_BUCKET = process.env.MINIO_BUCKET!
 const REVERSE_PROXY_DOMAIN = process.env.REVERSE_PROXY_DOMAIN || 'localhost'
-const USE_HTTPS = process.env.USE_HTTPS !== 'false'
+const IS_PRODUCTION = process.env.NODE_ENV === 'production'
+const USE_HTTPS = IS_PRODUCTION ? process.env.USE_HTTPS !== 'false' : false
+const SERVER_IP = process.env.SERVER_IP!
 
 const app = express()
 
@@ -84,12 +87,14 @@ app.post('/new-project', async (req: Request<{}, {}, ProjectRequest>, res: Respo
       console.log(`🚀 Container iniciado: ${container.id}`)
 
       const protocol = USE_HTTPS ? 'https' : 'http'
-      const previewURL = `${protocol}://${projectSlug}.${REVERSE_PROXY_DOMAIN}:8000`
+      const previewURL = `${protocol}://${projectSlug}.${REVERSE_PROXY_DOMAIN}${IS_PRODUCTION ? '' : ':8000'}`
+
+      USE_HTTPS ? await createDNSRecord(projectSlug, SERVER_IP) : null
 
       return res.json({
          status: 'queued',
          data: {
-            projectSlug, 
+            projectSlug,
             url: previewURL
          }
       })
