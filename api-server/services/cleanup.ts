@@ -30,7 +30,7 @@ interface ProjectInfo {
 
 export async function cleanupExpiredProjects(): Promise<void> {
    const now = Date.now()
-   const cutoff = now - (1 * 60 * 1000)
+   const cutoff = now - (TTL_HOURS * 60 * 60 * 1000)
 
    const keys = await redis.keys('project:*')
 

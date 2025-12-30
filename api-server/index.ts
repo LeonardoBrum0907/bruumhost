@@ -28,7 +28,7 @@ const REVERSE_PROXY_DOMAIN = process.env.REVERSE_PROXY_DOMAIN || 'localhost'
 // const IS_PRODUCTION = process.env.NODE_ENV === 'production'
 const USE_HTTPS = process.env.USE_HTTPS !== 'false'
 const SERVER_IP = process.env.SERVER_IP!
-
+const TTL_HOURS = parseInt(process.env.TTL_HOURS || '24')
 const app = express()
 
 const httpServer = http.createServer(app)
@@ -99,10 +99,10 @@ app.post('/new-project', async (req: Request<{}, {}, ProjectRequest>, res: Respo
             slug: projectSlug,
             githubURL,
             createdAt: Date.now(),
-            expiresAt: Date.now() + (1 * 60 * 1000)
+            expiresAt: Date.now() + (TTL_HOURS * 60 * 60 * 1000)
          }),
          'EX',
-         1 * 60 * 1000
+         60 * 60 * 1000
       )
 
       return res.json({
