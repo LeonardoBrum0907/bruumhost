@@ -7,6 +7,7 @@ import Docker from 'dockerode'
 import { generateSlug } from 'random-word-slugs'
 import http from 'http'
 import { createDNSRecord } from './services/dns'
+import { cleanupExpiredProjects } from './services/cleanup'
 
 dotenv.config()
 
@@ -32,6 +33,7 @@ const app = express()
 
 const httpServer = http.createServer(app)
 
+const redis = new Redis(REDIS_URL)
 const subscriber = new Redis(REDIS_URL)
 
 const io = new Server(httpServer, {
@@ -91,6 +93,18 @@ app.post('/new-project', async (req: Request<{}, {}, ProjectRequest>, res: Respo
 
       USE_HTTPS ? await createDNSRecord(projectSlug, SERVER_IP) : null
 
+      await redis.set(
+         `project:${projectSlug}`,
+         JSON.stringify({
+            slug: projectSlug,
+            githubURL,
+            createdAt: Date.now(),
+            expiresAt: Date.now() + (1 * 60 * 1000)
+         }),
+         'EX',
+         1 * 60 * 1000
+      )
+
       return res.json({
          status: 'queued',
          data: {
@@ -118,6 +132,15 @@ async function initRedisSubscribe() {
 }
 
 initRedisSubscribe()
+
+setInterval(async () => {
+   console.log('Running cleanup...')
+   try {
+      await cleanupExpiredProjects()
+   } catch (error: any) {
+      console.error(`Error running cleanup: ${error}`)
+   }
+}, 1000 * 30) // Run every 30 seconds
 
 httpServer.listen(PORT, () => {
    console.log(`API Server Running on port ${PORT}`)
