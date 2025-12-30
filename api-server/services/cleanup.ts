@@ -1,7 +1,6 @@
 import Redis from 'ioredis'
 import dotenv from 'dotenv'
 import { DeleteObjectsCommand, ListObjectsV2Command, S3Client } from '@aws-sdk/client-s3'
-import { deleteDNSRecord } from './dns'
 
 dotenv.config()
 
@@ -43,7 +42,6 @@ export async function cleanupExpiredProjects(): Promise<void> {
          console.log(`Deleting expired project: ${project.slug}`)
 
          await deleteMinIOFiles(project.slug)
-         await deleteDNSRecord(project.slug)
          await redis.del(key)
       }
    }

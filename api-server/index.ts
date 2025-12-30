@@ -6,7 +6,6 @@ import { Server } from 'socket.io'
 import Docker from 'dockerode'
 import { generateSlug } from 'random-word-slugs'
 import http from 'http'
-import { createDNSRecord } from './services/dns'
 import { cleanupExpiredProjects } from './services/cleanup'
 
 dotenv.config()
@@ -91,8 +90,6 @@ app.post('/new-project', async (req: Request<{}, {}, ProjectRequest>, res: Respo
       const protocol = USE_HTTPS ? 'https' : 'http'
       const previewURL = `${protocol}://${projectSlug}.${REVERSE_PROXY_DOMAIN}${USE_HTTPS ? '' : ':8000'}`
 
-      USE_HTTPS ? await createDNSRecord(projectSlug, SERVER_IP) : null
-
       await redis.set(
          `project:${projectSlug}`,
          JSON.stringify({
@@ -102,7 +99,7 @@ app.post('/new-project', async (req: Request<{}, {}, ProjectRequest>, res: Respo
             expiresAt: Date.now() + (TTL_HOURS * 60 * 60 * 1000)
          }),
          'EX',
-         60 * 60 * 1000
+         TTL_HOURS * 60 * 60 // TTL in seconds
       )
 
       return res.json({
