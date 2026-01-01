@@ -3,6 +3,7 @@ import { Input } from './components/ui/input'
 import { Button } from './components/ui/button'
 import { io } from 'socket.io-client'
 import LightPillar from './components/LightPillar'
+import { isValidURL } from './utils/validations'
 
 const socket = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:9000')
 
@@ -102,16 +103,6 @@ function App() {
       }
    }, [deployStatus, targetPillarProps, idlePillarProps])
 
-   const isValidURL: [boolean, string | null] = useMemo(() => {
-      if (!githubURL) return [false, null]
-
-      const githubURLRegex = new RegExp(
-         /^(?:https?:\/\/)?(?:www\.)?github\.com\/([^\/]+)\/([^\/]+)(?:\/)?$/
-      )
-
-      return [githubURLRegex.test(githubURL), 'Invalid GitHub repository URL']
-   }, [githubURL])
-
    const handleDeploy = async () => {
       console.log('Deploying...')
       setLoading(true)
@@ -203,7 +194,7 @@ function App() {
                <Button
                   className={`${previewURL ? 'rounded-tr-4xl' : 'rounded-r-full'} p-8 ring-1 ring-gray-100/20 bg-gray-600/20 backdrop-blur-sm cursor-pointer`}
                   onClick={handleDeploy}
-                  disabled={loading || !isValidURL[0] || deployStatus !== null}
+                  disabled={loading || !isValidURL(githubURL) || deployStatus !== null}
                >
                   {deployStatus === 'building' ? 'Building...' : deployStatus === 'success' ? 'Success!' : deployStatus === 'error' ? 'Error' : 'Deploy'}
                </Button>
