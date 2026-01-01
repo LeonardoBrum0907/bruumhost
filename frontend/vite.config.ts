@@ -14,6 +14,10 @@ export default defineConfig({
       globals: true,
       environment: 'jsdom',
       setupFiles: './src/tests/setup.ts',
+      coverage: {
+         include: ['src/**/*.{js,jsx,ts,tsx}'],
+         exclude: ['**/node_modules/**', '**/*.test.{js,ts}', '**/dist/**'],
+      }
    },
    resolve: {
       alias: {
