@@ -1,0 +1,31 @@
+{
+   "name": "bruumhost",
+   "version": "1.0.0",
+   "description": "",
+   "homepage": "https://github.com/LeonardoBrum0907/bruumhost#readme",
+   "bugs": {
+      "url": "https://github.com/LeonardoBrum0907/bruumhost/issues"
+   },
+   "repository": {
+      "type": "git",
+      "url": "git+https://github.com/LeonardoBrum0907/bruumhost.git"
+   },
+   "scripts": {
+      "prepare": "husky",
+      "lint:frontend": "cd frontend && npm run lint:fix",
+      "test:frontend": "cd frontend && npm run test:run -- --related"
+   },
+   "lint-staged": {
+      "frontend/src/**/*.{ts,tsx}": [
+         "npm run lint:frontend",
+         "npm run test:frontend"
+      ],
+      "frontend/**/*.{json,css}": [
+         "npm run lint:frontend"
+      ]
+   },
+   "devDependencies": {
+      "husky": "^9.1.7",
+      "lint-staged": "^16.2.7"
+   }
+}

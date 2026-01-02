@@ -16,6 +16,9 @@ logs
 # Coverage
 **/coverage/
 
+# Husky
+.husky/_/
+
 # Editor directories and files
 **/.vscode/*
 **/!.vscode/extensions.json
