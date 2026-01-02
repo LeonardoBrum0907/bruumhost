@@ -52,6 +52,7 @@ services:
       REDIS_URL: redis://redis:6379
       DOCKER_SOCKET: /var/run/docker.sock
       BUILD_IMAGE_NAME: bruumhost-builder:latest
+      DOCKER_NETWORK: bruumhost_bruumhost-network
       MINIO_ENDPOINT: http://minio:8080
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: minioadmin

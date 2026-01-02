@@ -17,16 +17,18 @@ interface ProjectRequest {
 
 const PORT = process.env.PORT || 9000
 const REDIS_URL = process.env.REDIS_URL!
+
 const DOCKER_SOCKET = process.env.DOCKER_SOCKET || '/var/run/docker.sock'
 const BUILD_IMAGE_NAME = process.env.BUILD_IMAGE_NAME!
+const DOCKER_NETWORK = process.env.DOCKER_NETWORK!
+
 const MINIO_ENDPOINT = process.env.MINIO_ENDPOINT!
 const MINIO_ACCESS_KEY = process.env.MINIO_ACCESS_KEY!
 const MINIO_SECRET_KEY = process.env.MINIO_SECRET_KEY!
 const MINIO_BUCKET = process.env.MINIO_BUCKET!
 const REVERSE_PROXY_DOMAIN = process.env.REVERSE_PROXY_DOMAIN || 'localhost'
-// const IS_PRODUCTION = process.env.NODE_ENV === 'production'
+
 const USE_HTTPS = process.env.USE_HTTPS !== 'false'
-const SERVER_IP = process.env.SERVER_IP!
 const TTL_HOURS = parseInt(process.env.TTL_HOURS || '24')
 const app = express()
 
@@ -79,7 +81,7 @@ app.post('/new-project', async (req: Request<{}, {}, ProjectRequest>, res: Respo
          ],
          HostConfig: {
             AutoRemove: true,
-            NetworkMode: 'bruumhost_bruumhost-network'
+            NetworkMode: DOCKER_NETWORK
          },
          AttachStdout: true, // !!!
          AttachStderr: true // !!!
