@@ -78,7 +78,8 @@ app.post('/new-project', async (req: Request<{}, {}, ProjectRequest>, res: Respo
             `MINIO_BUCKET=${MINIO_BUCKET}`
          ],
          HostConfig: {
-            AutoRemove: true
+            AutoRemove: true,
+            NetworkMode: 'bruumhost_bruumhost-network'
          },
          AttachStdout: true, // !!!
          AttachStderr: true // !!!
