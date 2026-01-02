@@ -41,17 +41,11 @@ const LightPillar: React.FC<LightPillarProps> = ({
    const mouseRef = useRef<THREE.Vector2>(new THREE.Vector2(0, 0));
    const timeRef = useRef<number>(0);
    const rotationSpeedRef = useRef<number>(rotationSpeed)
-   const [webGLSupported, setWebGLSupported] = useState<boolean>(true);
-
-   // Check WebGL support
-   useEffect(() => {
+   const [webGLSupported] = useState<boolean>(() => {
       const canvas = document.createElement('canvas');
       const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-      if (!gl) {
-         setWebGLSupported(false);
-         console.warn('WebGL is not supported in this browser');
-      }
-   }, []);
+      return !!gl;
+   });
 
    // LightPillar.tsx - Adicione este useEffect após o useEffect principal
    useEffect(() => {
@@ -95,8 +89,7 @@ const LightPillar: React.FC<LightPillarProps> = ({
          });
       } catch (error) {
          console.error('Failed to create WebGL renderer:', error);
-         setWebGLSupported(false);
-         return;
+         throw error;
       }
 
       renderer.setSize(width, height);
