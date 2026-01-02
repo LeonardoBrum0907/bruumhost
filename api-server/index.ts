@@ -137,7 +137,7 @@ setInterval(async () => {
    } catch (error: any) {
       console.error(`Error running cleanup: ${error}`)
    }
-}, 1000 * 60 * 5) // Run every 5 minutes
+}, 1000 * 60 * 20) // Run every 20 minutes
 
 httpServer.listen(PORT, () => {
    console.log(`API Server Running on port ${PORT}`)
