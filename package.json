@@ -13,7 +13,7 @@
    "scripts": {
       "prepare": "husky",
       "lint:frontend": "cd frontend && npm run lint:fix",
-      "test:frontend": "cd frontend && npm run test:run -- --related"
+      "test:frontend": "cd frontend && npm run test:run related -- --passWithNoTests"
    },
    "lint-staged": {
       "frontend/src/**/*.{ts,tsx}": [
