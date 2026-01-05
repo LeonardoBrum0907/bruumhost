@@ -68,16 +68,13 @@ function App() {
 
    const logsContainerRef = useRef<HTMLDivElement>(null)
 
-   // Estados para controlar a transição fade out/in
    const [pillarOpacity, setPillarOpacity] = useState(1)
    const targetPillarProps = useDeployVisuals(deployStatus)
    const idlePillarProps = useDeployVisuals(null)
    const [currentPillarProps, setCurrentPillarProps] = useState(() => idlePillarProps)
    const previousStatusRef = useRef<DeplyStatus | null>(null)
 
-   // Detecta mudança de status e faz fade out/in
    useEffect(() => {
-      // Verifica se o status realmente mudou
       if (deployStatus !== previousStatusRef.current && deployStatus !== null) {
          previousStatusRef.current = deployStatus
 
@@ -107,8 +104,8 @@ function App() {
       console.log('Deploying...')
       setLoading(true)
       setDeployStatus('building')
-      
-      try {         
+
+      try {
          const { data }: { data: { projectSlug: string, url: string } } = await fetch(`${apiURL}/new-project`, {
             method: 'POST',
             headers: {
@@ -161,7 +158,7 @@ function App() {
    }, [logs])
 
    return (
-      <div className="relative w-screen h-screen min-h-screen flex items-center justify-center">
+      <div className="px-4 md:px-0 relative w-screen h-screen min-h-screen flex items-center justify-center">
          <div style={{
             position: 'fixed',
             top: 0,
@@ -188,7 +185,7 @@ function App() {
             />
          </div>
 
-         <div className='min-w-[700px]'>
+         <div className='w-full md:max-w-[700px]'>
             <div className='flex items-center justify-center gap-1'>
                <Input placeholder='GitHub Repository URL' value={githubURL} onChange={(e) => setGithubURL(e.target.value)} className={`${previewURL ? 'rounded-tl-4xl' : 'rounded-l-full'} p-8 bg-gray-600/20 backdrop-blur-sm`} />
                <Button
@@ -200,23 +197,23 @@ function App() {
                </Button>
             </div>
             {previewURL && (
-               <div className="mt-1 bg-gray-600/20 backdrop-blur-sm ring-1 ring-gray-100/20 py-4 px-8 rounded-b-4xl">
+               <div className="flex flex-col md:flex-row items-center justify-center md:justify-start gap-1 mt-1 bg-gray-600/20 backdrop-blur-sm ring-1 ring-gray-100/20 py-4 px-4 md:px-8 rounded-b-4xl">
                   <p className='text-white'>
                      Preview URL:
-                     <a
-                        target="_blank"
-                        className={`text-sky-400 bg-sky-950 px-3 py-2 rounded-lg ml-4 ${deployStatus !== 'success' ? 'pointer-events-none cursor-not-allowed' : 'cursor-pointer'}`}
-                        href={deployStatus !== 'success' ? '#' : previewURL}
-                     >
-                        {previewURL}
-                     </a>
                   </p>
+                  <a
+                     target="_blank"
+                     className={`px-3 py-2 bg-gray-600/20 backdrop-blur-sm rounded-lg md:ml-4 ${deployStatus !== 'success' ? 'pointer-events-none text-white opacity-60 select-none' : 'cursor-pointer bg-sky-950 text-sky-400'}`}
+                     href={deployStatus !== 'success' ? '#' : previewURL}
+                  >
+                     {previewURL}
+                  </a>
                </div>
             )}
             {logs.length > 0 && (
                <div
                   ref={logsContainerRef}
-                  className={`text-sm bg-gray-600/20 backdrop-blur-sm ${deployStatus === 'success' ? 'text-green-500' : deployStatus === 'error' ? 'text-red-500' : 'text-gray-400'} logs-container mt-5 ${deployStatus === 'success' ? 'border-green-500' : deployStatus === 'error' ? 'border-red-500' : 'border-[#5227FF]'} border-2 rounded-lg p-4 h-[300px] overflow-y-auto overflow-x-hidden`}
+                  className={`text-sm bg-gray-600/20 backdrop-blur-sm ${deployStatus === 'success' ? 'text-green-500' : deployStatus === 'error' ? 'text-red-500' : 'text-gray-400'} logs-container mt-5 ${deployStatus === 'success' ? 'border-green-500' : deployStatus === 'error' ? 'border-red-500' : 'border-[#5227FF]'} border-2 rounded-lg p-4 h-[300px] overflow-auto`}
                >
                   <pre className="flex flex-col gap-1">
                      {logs.map((log, i) => (

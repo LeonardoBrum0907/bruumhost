@@ -5,7 +5,7 @@ services:
     image: redis:7-alpine
     container_name: bruumhost-redis
     ports: 
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis-data:/data
     networks:
@@ -22,11 +22,11 @@ services:
     image: minio/minio:latest
     container_name: bruumhost-minio
     ports:
-      - "8080:8080"
-      - "8081:8081"
+      - "${MINIO_API_PORT:-8080}:8080"
+      - "${MINIO_CONSOLE_PORT:-8081}:8081"
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
     command: server /data --address ":8080" --console-address ":8081"
     volumes:
       - minio-data:/data
@@ -46,20 +46,21 @@ services:
       dockerfile: Dockerfile
     container_name: bruumhost-api
     ports: 
-      - "9000:9000"
+      - "${API_SERVER_PORT:-9000}:9000"
     environment:
-      PORT: 9000
-      REDIS_URL: redis://redis:6379
-      DOCKER_SOCKET: /var/run/docker.sock
-      BUILD_IMAGE_NAME: bruumhost-builder:latest
-      DOCKER_NETWORK: bruumhost_bruumhost-network
-      MINIO_ENDPOINT: http://minio:8080
-      MINIO_ACCESS_KEY: minioadmin
-      MINIO_SECRET_KEY: minioadmin
-      MINIO_BUCKET: bruumhost
-      USE_HTTPS: false
-      SERVER_IP: localhost
-      TTL_HOURS: 24
+      PORT: ${API_SERVER_PORT:-9000}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      DOCKER_SOCKET: ${DOCKER_SOCKET:-/var/run/docker.sock}
+      BUILD_IMAGE_NAME: ${BUILD_IMAGE_NAME:-bruumhost-builder:latest}
+      DOCKER_NETWORK: ${DOCKER_NETWORK:-bruumhost_bruumhost-network}
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT:-http://minio:8080}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+      MINIO_BUCKET: ${MINIO_BUCKET:-bruumhost}
+      REVERSE_PROXY_DOMAIN: ${REVERSE_PROXY_DOMAIN:-localhost}
+      USE_HTTPS: ${USE_HTTPS:-false}
+      SERVER_IP: ${SERVER_IP:-localhost}
+      TTL_HOURS: ${TTL_HOURS:-1}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
@@ -76,14 +77,14 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        VITE_API_URL: ${VITE_API_URL}
-        VITE_SOCKET_URL: ${VITE_SOCKET_URL}
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:9000}
+        VITE_SOCKET_URL: ${VITE_SOCKET_URL:-http://localhost:9000}
     container_name: bruumhost-frontend
     ports:
-      - "80:80"
+      - "${FRONTEND_PORT:-80}:80"
     environment:
-      VITE_API_URL: http://localhost:9000
-      VITE_SOCKET_URL: http://localhost:9000
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:9000}
+      VITE_SOCKET_URL: ${VITE_SOCKET_URL:-http://localhost:9000}
     depends_on:
       - api-server
     networks:
@@ -96,14 +97,14 @@ services:
       dockerfile: Dockerfile
     container_name: bruumhost-reverse-proxy
     ports:
-      - "8000:8000"
+      - "${REVERSE_PROXY_PORT:-8000}:8000"
     environment:
-      PORT: 8000
-      MINIO_ENDPOINT: http://minio:8080
-      MINIO_ACCESS_KEY: minioadmin
-      MINIO_SECRET_KEY: minioadmin
-      MINIO_BUCKET: bruumhost
-      TTL_HOURS: 24
+      PORT: ${REVERSE_PROXY_PORT:-8000}
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT:-http://minio:8080}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+      MINIO_BUCKET: ${MINIO_BUCKET:-bruumhost}
+      PRESIGNED_URL_EXPIRES_IN: ${PRESIGNED_URL_EXPIRES_IN:-3600}
     depends_on:
       minio:
         condition: service_healthy
