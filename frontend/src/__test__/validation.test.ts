@@ -19,7 +19,7 @@ describe('isValidGithubURL - Github URL Validation', () => {
       expect(isValidURL('https://github.com/user/repo-name-with-special-chars')).toBe(true)
    })
 
-   it('should validate URL without https://', () => {
+   it('should reject URL without https://', () => {
       expect(isValidURL('github.com/user/repo')).toBe(false)
    })
 
