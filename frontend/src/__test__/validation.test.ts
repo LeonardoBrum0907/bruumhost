@@ -7,10 +7,6 @@ describe('isValidGithubURL - Github URL Validation', () => {
       expect(isValidURL('https://github.com/user/repo')).toBe(true)
    })
 
-   it('should validate URL without https://', () => {
-      expect(isValidURL('github.com/user/repo')).toBe(true)
-   })
-
    it('should validate URL with www', () => {
       expect(isValidURL('https://www.github.com/user/repo')).toBe(true)
    })
@@ -21,6 +17,10 @@ describe('isValidGithubURL - Github URL Validation', () => {
 
    it('should accept URLs with special characters in repository name', () => {
       expect(isValidURL('https://github.com/user/repo-name-with-special-chars')).toBe(true)
+   })
+
+   it('should reject URL without https://', () => {
+      expect(isValidURL('github.com/user/repo')).toBe(false)
    })
 
    it('should reject URL without user', () => {

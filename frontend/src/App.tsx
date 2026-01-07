@@ -213,7 +213,7 @@ function App() {
             {logs.length > 0 && (
                <div
                   ref={logsContainerRef}
-                  className={`md:text-sm text-xs bg-gray-600/20 backdrop-blur-sm ${deployStatus === 'success' ? 'text-green-500' : deployStatus === 'error' ? 'text-red-500' : 'text-gray-400'} logs-container mt-5 ${deployStatus === 'success' ? 'border-green-500' : deployStatus === 'error' ? 'border-red-500' : 'border-[#5227FF]'} border-2 rounded-lg p-4 h-[300px] overflow-auto`}
+                  className={`text-sm bg-gray-600/20 backdrop-blur-sm ${deployStatus === 'success' ? 'text-green-500' : deployStatus === 'error' ? 'text-red-500' : 'text-gray-400'} logs-container mt-5 ${deployStatus === 'success' ? 'border-green-500' : deployStatus === 'error' ? 'border-red-500' : 'border-[#5227FF]'} border-2 rounded-lg p-4 h-[300px] overflow-auto`}
                >
                   <pre className="flex flex-col gap-1">
                      {logs.map((log, i) => (
