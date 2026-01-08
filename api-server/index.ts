@@ -53,6 +53,41 @@ const docker = new Docker({
    socketPath: DOCKER_SOCKET
 })
 
+async function ensureImageExists(imageName: string): Promise<void> {
+   try {
+      console.log(`🔍 Verificando se a imagem ${imageName} existe localmente...`)
+      
+      const images = await docker.listImages()
+      const imageExists = images.some((img) => 
+         img.RepoTags && img.RepoTags.some(tag => tag === imageName)
+      )
+      
+      if (imageExists) {
+         console.log(`✅ Imagem ${imageName} já existe localmente`)
+         return
+      }
+      
+      console.log(`📥 Imagem ${imageName} não encontrada. Fazendo pull do Docker Hub...`)
+      
+      const stream = await docker.pull(imageName)
+      
+      return new Promise((resolve, reject) => {
+         docker.modem.followProgress(stream, (err: Error | null, output: any[]) => {
+            if (err) {
+               console.error(`❌ Erro ao fazer pull da imagem: ${err.message}`)
+               reject(err)
+            } else {
+               console.log(`✅ Imagem ${imageName} baixada com sucesso!`)
+               resolve()
+            }
+         })
+      })
+   } catch (error: any) {
+      console.error(`❌ Erro ao verificar/baixar imagem: ${error.message}`)
+      throw error
+   }
+}
+
 app.use(cors({
    origin: '*',
    credentials: true
@@ -66,7 +101,7 @@ app.post('/new-project', async (req: Request<{}, {}, ProjectRequest>, res: Respo
 
    try {
       console.log(`🚀 Criando container para projeto: ${projectSlug}`)
-
+      
       const container = await docker.createContainer({
          Image: BUILD_IMAGE_NAME,
          name: `build-${projectSlug}-${Date.now()}`,
@@ -113,12 +148,14 @@ app.post('/new-project', async (req: Request<{}, {}, ProjectRequest>, res: Respo
          }
       })
    } catch (error: any) {
-      console.error(`Erro ao executar Docker: ${error}`)
+      console.error(`❌ Erro ao executar Docker: ${error}`)
+      console.error(`Stack trace: ${error.stack}`)
 
       return res.status(500).json({
          status: 'error',
          message: 'Falha ao iniciar build',
-         error: error.message
+         error: error.message,
+         details: error.stack
       })
    }
 })
@@ -133,6 +170,18 @@ async function initRedisSubscribe() {
 
 initRedisSubscribe()
 
+async function initializeBuilderImage() {
+   try {
+      console.log(`🔍 Verificando imagem do builder na inicialização: ${BUILD_IMAGE_NAME}`)
+      await ensureImageExists(BUILD_IMAGE_NAME)
+   } catch (error: any) {
+      console.warn(`⚠️ Não foi possível verificar/baixar a imagem na inicialização: ${error.message}`)
+      console.warn(`⚠️ A imagem será baixada na primeira requisição`)
+   }
+}
+
+initializeBuilderImage().catch(() => {})
+
 setInterval(async () => {
    console.log('Running cleanup...')
    try {
@@ -145,4 +194,5 @@ setInterval(async () => {
 httpServer.listen(PORT, () => {
    console.log(`API Server Running on port ${PORT}`)
    console.log(`Socket Server Running at /socket.io`)
+   console.log(`📦 Builder Image: ${BUILD_IMAGE_NAME}`)
 })
