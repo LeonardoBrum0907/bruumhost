@@ -27,6 +27,7 @@ const MINIO_ACCESS_KEY = process.env.MINIO_ACCESS_KEY!
 const MINIO_SECRET_KEY = process.env.MINIO_SECRET_KEY!
 const MINIO_BUCKET = process.env.MINIO_BUCKET!
 const REVERSE_PROXY_DOMAIN = process.env.REVERSE_PROXY_DOMAIN || 'localhost'
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || '').split(',').map(o => o.trim()).filter(Boolean)
 
 const USE_HTTPS = process.env.USE_HTTPS !== 'false'
 const TTL_HOURS = parseInt(process.env.TTL_HOURS || '24')
@@ -38,7 +39,17 @@ const redis = new Redis(REDIS_URL)
 const subscriber = new Redis(REDIS_URL)
 
 const io = new Server(httpServer, {
-   cors: { origin: '*' },
+   cors: {
+      origin: (origin, callback) => {
+         if (!origin) return callback(null, true)
+
+         if (allowedOrigins.includes(origin)) {
+            return callback(null, true)
+         }
+
+         return callback(new Error(`Not allowed by CORS: ${origin}`))
+      }
+   },
    path: '/socket.io'
 })
 
@@ -56,21 +67,21 @@ const docker = new Docker({
 async function ensureImageExists(imageName: string): Promise<void> {
    try {
       console.log(`🔍 Verificando se a imagem ${imageName} existe localmente...`)
-      
+
       const images = await docker.listImages()
-      const imageExists = images.some((img) => 
+      const imageExists = images.some((img) =>
          img.RepoTags && img.RepoTags.some(tag => tag === imageName)
       )
-      
+
       if (imageExists) {
          console.log(`✅ Imagem ${imageName} já existe localmente`)
          return
       }
-      
+
       console.log(`📥 Imagem ${imageName} não encontrada. Fazendo pull do Docker Hub...`)
-      
+
       const stream = await docker.pull(imageName)
-      
+
       return new Promise((resolve, reject) => {
          docker.modem.followProgress(stream, (err: Error | null, output: any[]) => {
             if (err) {
@@ -89,7 +100,15 @@ async function ensureImageExists(imageName: string): Promise<void> {
 }
 
 app.use(cors({
-   origin: '*',
+   origin: (origin, callback) => {
+      if (!origin) return callback(null, true)
+
+      if (allowedOrigins.includes(origin)) {
+         return callback(null, true)
+      }
+
+      return callback(new Error(`Not allowed by CORS: ${origin}`))
+   },
    credentials: true
 }))
 
@@ -100,8 +119,10 @@ app.post('/new-project', async (req: Request<{}, {}, ProjectRequest>, res: Respo
    const projectSlug = slug ? slug : generateSlug()
 
    try {
-      console.log(`🚀 Criando container para projeto: ${projectSlug}`)
+      await ensureImageExists(BUILD_IMAGE_NAME)
       
+      console.log(`🚀 Criando container para projeto: ${projectSlug}`)
+
       const container = await docker.createContainer({
          Image: BUILD_IMAGE_NAME,
          name: `build-${projectSlug}-${Date.now()}`,
@@ -172,7 +193,6 @@ initRedisSubscribe()
 
 async function initializeBuilderImage() {
    try {
-      console.log(`🔍 Verificando imagem do builder na inicialização: ${BUILD_IMAGE_NAME}`)
       await ensureImageExists(BUILD_IMAGE_NAME)
    } catch (error: any) {
       console.warn(`⚠️ Não foi possível verificar/baixar a imagem na inicialização: ${error.message}`)
@@ -180,7 +200,7 @@ async function initializeBuilderImage() {
    }
 }
 
-initializeBuilderImage().catch(() => {})
+initializeBuilderImage().catch(() => { })
 
 setInterval(async () => {
    console.log('Running cleanup...')
