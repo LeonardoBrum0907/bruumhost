@@ -60,7 +60,7 @@ services:
       REVERSE_PROXY_DOMAIN: ${REVERSE_PROXY_DOMAIN:-localhost}
       USE_HTTPS: ${USE_HTTPS:-false}
       SERVER_IP: ${SERVER_IP:-localhost}
-      TTL_HOURS: ${TTL_HOURS:-1}
+      TTL_MINUTES: ${TTL_MINUTES}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
 
     volumes:

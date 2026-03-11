@@ -290,7 +290,7 @@ bruumhost/
 | `REVERSE_PROXY_DOMAIN` | Domínio do reverse proxy | `localhost` |
 | `USE_HTTPS` | Usar HTTPS | `false` |
 | `SERVER_IP` | IP do servidor | `localhost` |
-| `TTL_HOURS` | Tempo de vida dos projetos (horas) | `24` |
+| `TTL_MINUTES` | Tempo de vida dos projetos (horas) | `24` |
 
 **Nota**: No docker-compose, as variáveis estão configuradas para comunicação interna entre containers. Para desenvolvimento local, normalmente não é necessário alterá-las.
 
@@ -324,7 +324,7 @@ docker compose up -d --build api-server frontend
 
 ### Limpeza Automática
 
-O sistema possui um serviço de limpeza automática que remove projetos expirados baseado no `TTL_HOURS` (padrão: 24 horas). O cleanup roda automaticamente no API Server a cada 20 minutos.
+O sistema possui um serviço de limpeza automática que remove projetos expirados baseado no `TTL_MINUTES` (padrão: 24 horas). O cleanup roda automaticamente no API Server a cada 20 minutos.
 
 ## 🧪 Desenvolvimento
 
