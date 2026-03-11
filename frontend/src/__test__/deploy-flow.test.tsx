@@ -1,14 +1,3 @@
-// Montar a App com render(<App />)
-// Digitar a URL com userEvent.type
-// Preparar o mock do fetch para retornar dados co projectSlug e url
-// Clicar em Deploy
-// Aguardar (waitFor) o fetch e a chamada do socket.emit
-// Recuperar a instância de socket mockada (a partir do mock io) para verificar emit
-// Invocar o callback capturado para simular mensagens de socket (status + logs)
-// Usar waitFor para verificar estados/DOM atualizados
-
-// socket callback will be provided via globalThis.__socketMessageCallback from setup mock
-
 import App from "@/App";
 import type { GlobalThis } from "@/tests/setup";
 import { render, screen, waitFor } from "@testing-library/react";

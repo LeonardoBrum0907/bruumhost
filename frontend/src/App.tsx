@@ -51,7 +51,7 @@ function App() {
    }, [deployStatus, targetPillarProps, idlePillarProps])
 
    const handleDeploy = async () => {
-      console.log('Deploying...')
+      setLogs((prev) => [...prev, 'Starting deploy flow'])
       setLoading(true)
       setDeployStatus('building')
 
@@ -64,7 +64,6 @@ function App() {
             body: JSON.stringify({ githubURL }),
          }).then(res => res.json())
 
-         console.log(data)
 
          if (data) {
             const { projectSlug, url } = data
@@ -76,6 +75,7 @@ function App() {
          }
       } catch (error) {
          console.error(error)
+         setLogs((prev) => [...prev, 'Server Error... Canceled Deploy.'])
          setDeployStatus('error')
       } finally {
          setLoading(false)
@@ -83,15 +83,22 @@ function App() {
    }
 
    const handleSocketIncommingMessage = useCallback((message: string) => {
-      console.log(`[Incomming Socket Message]:`, typeof message, message)
-      const data = JSON.parse(message)
-      const { log, type, status } = data
+      try {
+         const data = JSON.parse(message)
+         const { log, type, status } = data
 
-      setLogs((prev) => [...prev, log])
-
-      if (type === 'status' && status) {
-         setDeployStatus(status)
+         if (typeof log === 'string') {
+            setLogs((prev) => [...prev, log])
+         }   
+   
+         if (type === 'status' && status) {
+            setDeployStatus(status)
+         }
+      } catch (error) {
+         console.error('[Socket] Invalid message payload:', message, error)
+         return
       }
+      
    }, [])
 
    useEffect(() => {
