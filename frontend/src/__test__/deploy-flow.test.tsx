@@ -70,4 +70,24 @@ describe('Deploy Flow', () => {
          expect(link.getAttribute('href')).toBe(mockPreviewURL)
       })
    })
+
+   it('should handle fetch error by resetting loading and showing error state', async () => {
+      render(<App />)
+
+      const input = screen.getByPlaceholderText('GitHub Repository URL')
+      const button = screen.getByRole('button', { name: 'Deploy'})
+
+      await userEvent.type(input, 'https://github.com/user/repo')
+
+      ;(globalThis.fetch as unknown as Mock).mockRejectedValueOnce(new Error('Network error'))
+
+      await userEvent.click(button)
+
+      
+      await waitFor(() => {
+         expect(button).toBeDisabled()
+         expect(button).toHaveTextContent('Error')
+      })
+
+   })
 })
