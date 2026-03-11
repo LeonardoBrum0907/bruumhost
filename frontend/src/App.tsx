@@ -76,6 +76,7 @@ function App() {
          }
       } catch (error) {
          console.error(error)
+         setDeployStatus('error')
       } finally {
          setLoading(false)
       }
