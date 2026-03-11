@@ -90,4 +90,39 @@ describe('Deploy Flow', () => {
       })
 
    })
+
+   it('should parse socket messages and update logs and deployStatus', async () => {
+      render(<App />)
+
+      const globalCb = (globalThis as GlobalThis).__socketMessageCallback
+      expect (globalCb).toBeDefined()
+
+      globalCb?.(JSON.stringify({ log: 'upload started', type: 'status', status: 'uploading' }))
+
+      await waitFor(() => {
+         expect(screen.getByText('> upload started')).toBeInTheDocument()
+         expect(screen.getByRole('button')).toHaveTextContent('Deploy')
+      })
+
+      globalCb?.(JSON.stringify({ log: 'build started', type: 'status', status: 'building' }))
+
+      await waitFor(() => {
+         expect(screen.getByText('> build started')).toBeInTheDocument()
+         expect(screen.getByRole('button')).toHaveTextContent('Building...')
+      })
+
+      globalCb?.(JSON.stringify({ log: 'done', type: 'status', status: 'success' }))
+
+      await waitFor(() => {
+         expect(screen.getByText('> done')).toBeInTheDocument()
+         expect(screen.getByRole('button')).toHaveTextContent('Success!')
+      })
+
+      globalCb?.(JSON.stringify({ log: 'failed', type: 'status', status: 'error' }))
+
+      await waitFor(() => {
+         expect(screen.getByText('> failed')).toBeInTheDocument()
+         expect(screen.getByRole('button')).toHaveTextContent('Error')
+      })
+   })
 })
