@@ -8,7 +8,7 @@ const REDIS_URL = process.env.REDIS_URL!
 const MINIO_ENDPOINT = process.env.MINIO_ENDPOINT!
 const MINIO_ACCESS_KEY = process.env.MINIO_ACCESS_KEY!
 const MINIO_SECRET_KEY = process.env.MINIO_SECRET_KEY!
-const TTL_HOURS = parseInt(process.env.TTL_HOURS || '24')
+const TTL_MINUTES = parseInt(process.env.TTL_MINUTES || '24')
 const MINIO_BUCKET = process.env.MINIO_BUCKET!
 
 const redis = new Redis(REDIS_URL)
@@ -29,7 +29,7 @@ interface ProjectInfo {
 
 export async function cleanupExpiredProjects(): Promise<void> {
    const now = Date.now()
-   const cutoff = now - (TTL_HOURS * 60 * 60 * 1000)
+   const cutoff = now - (TTL_MINUTES * 60 * 1000)
 
    const keys = await redis.keys('project:*')
 

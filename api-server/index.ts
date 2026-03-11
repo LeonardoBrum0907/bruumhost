@@ -30,7 +30,7 @@ const REVERSE_PROXY_DOMAIN = process.env.REVERSE_PROXY_DOMAIN || 'localhost'
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || '').split(',').map(o => o.trim()).filter(Boolean)
 
 const USE_HTTPS = process.env.USE_HTTPS !== 'false'
-const TTL_HOURS = parseInt(process.env.TTL_HOURS || '24')
+const TTL_MINUTES = parseInt(process.env.TTL_MINUTES || '60')
 const app = express()
 
 const httpServer = http.createServer(app)
@@ -155,10 +155,10 @@ app.post('/new-project', async (req: Request<{}, {}, ProjectRequest>, res: Respo
             slug: projectSlug,
             githubURL,
             createdAt: Date.now(),
-            expiresAt: Date.now() + (TTL_HOURS * 60 * 60 * 1000)
+            expiresAt: Date.now() + (TTL_MINUTES * 60 * 1000)
          }),
          'EX',
-         TTL_HOURS * 60 * 60 // TTL in seconds
+         (TTL_MINUTES * 3) * 60 // TTL of the data in Redis in seconds (3x longer than the expiration time)
       )
 
       return res.json({
@@ -209,7 +209,7 @@ setInterval(async () => {
    } catch (error: any) {
       console.error(`Error running cleanup: ${error}`)
    }
-}, 1000 * 60 * 20) // Run every 20 minutes
+}, 1000 * 60 * 10) // Run every 10 minutes
 
 httpServer.listen(PORT, () => {
    console.log(`API Server Running on port ${PORT}`)
