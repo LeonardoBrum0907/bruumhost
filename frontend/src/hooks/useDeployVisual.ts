@@ -1,8 +1,8 @@
 import { useMemo } from "react"
 
-export type DeplyStatus = 'idle' | 'building' | 'uploading' | 'success' | 'error'
+export type DeployStatus = 'idle' | 'building' | 'uploading' | 'success' | 'error'
 
-export const useDeployVisuals = (status: DeplyStatus | null) => {
+export const useDeployVisuals = (status: DeployStatus | null) => {
    return useMemo(() => {
       const configs = {
          idle: {
