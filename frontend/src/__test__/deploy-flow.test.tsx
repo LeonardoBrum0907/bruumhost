@@ -125,4 +125,17 @@ describe('Deploy Flow', () => {
          expect(screen.getByRole('button')).toHaveTextContent('Error')
       })
    })
+
+   it('should ignore invalid socket payloads without crashing', async () => {
+      render(<App />)
+
+      const globalCb = (globalThis as GlobalThis).__socketMessageCallback
+      expect(globalCb).toBeDefined()
+
+      expect(() => {
+         globalCb?.('NOT_JSON')
+      }).not.toThrow()
+
+      expect(screen.queryByText(/^> /)).not.toBeInTheDocument()
+   })
 })
