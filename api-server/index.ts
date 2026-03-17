@@ -130,6 +130,7 @@ app.post('/new-project', async (req: Request<{}, {}, ProjectRequest>, res: Respo
             },
             ensureImageExists,
             generateSlug,
+            dateNow: () => Date.now(),
             env: {
                REDIS_URL,
                MINIO_ENDPOINT,

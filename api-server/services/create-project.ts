@@ -51,6 +51,7 @@ interface CreateProjectDeps {
    redis: RedisPort
    ensureImageExists: (imageName: string) => Promise<void>
    generateSlug: () => string
+   dateNow: () => number
    env: EnvConfig
 }
 
@@ -66,13 +67,15 @@ export async function createProject(
       env
    } = deps
 
+   const dateNow = deps.dateNow()
+
    const projectSlug = slug ?? generateSlug()
 
    await ensureImageExists(env.BUILD_IMAGE_NAME)
 
    const container = await docker.createContainer({
       Image: env.BUILD_IMAGE_NAME,
-      name: `build-${projectSlug}-${Date.now()}`,
+      name: `build-${projectSlug}-${dateNow}`,
       Env: [
          `GITHUB_REPOSITORY_URL=${githubURL}`,
          `PROJECT_ID=${projectSlug}`,
@@ -95,7 +98,7 @@ export async function createProject(
    const protocol = env.USE_HTTPS ? 'https' : 'http'
    const previewURL = `${protocol}://${projectSlug}.${env.REVERSE_PROXY_DOMAIN}${env.USE_HTTPS ? '' : ':8000'}`
 
-   const createdAt = Date.now()
+   const createdAt = dateNow
    const expiresAt = createdAt + env.TTL_MINUTES * 60 * 1000
 
    await redis.set(
