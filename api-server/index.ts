@@ -7,6 +7,7 @@ import Docker from 'dockerode'
 import { generateSlug } from 'random-word-slugs'
 import http from 'http'
 import { cleanupExpiredProjects } from './services/cleanup'
+import { createProject } from './services/create-project'
 
 dotenv.config()
 
@@ -116,57 +117,37 @@ app.use(express.json())
 
 app.post('/new-project', async (req: Request<{}, {}, ProjectRequest>, res: Response) => {
    const { githubURL, slug } = req.body
-   const projectSlug = slug ? slug : generateSlug()
 
    try {
-      await ensureImageExists(BUILD_IMAGE_NAME)
-      
-      console.log(`🚀 Criando container para projeto: ${projectSlug}`)
-
-      const container = await docker.createContainer({
-         Image: BUILD_IMAGE_NAME,
-         name: `build-${projectSlug}-${Date.now()}`,
-         Env: [
-            `GITHUB_REPOSITORY_URL=${githubURL}`,
-            `PROJECT_ID=${projectSlug}`,
-            `REDIS_URL=${REDIS_URL}`,
-            `MINIO_ENDPOINT=${MINIO_ENDPOINT}`,
-            `MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY}`,
-            `MINIO_SECRET_KEY=${MINIO_SECRET_KEY}`,
-            `MINIO_BUCKET=${MINIO_BUCKET}`
-         ],
-         HostConfig: {
-            AutoRemove: true,
-            NetworkMode: DOCKER_NETWORK
-         },
-         AttachStdout: true, // !!!
-         AttachStderr: true // !!!
-      })
-
-      await container.start()
-      console.log(`🚀 Container iniciado: ${container.id}`)
-
-      const protocol = USE_HTTPS ? 'https' : 'http'
-      const previewURL = `${protocol}://${projectSlug}.${REVERSE_PROXY_DOMAIN}${USE_HTTPS ? '' : ':8000'}`
-
-      await redis.set(
-         `project:${projectSlug}`,
-         JSON.stringify({
-            slug: projectSlug,
-            githubURL,
-            createdAt: Date.now(),
-            expiresAt: Date.now() + (TTL_MINUTES * 60 * 1000)
-         }),
-         'EX',
-         (TTL_MINUTES * 3) * 60 // TTL of the data in Redis in seconds (3x longer than the expiration time)
+      const result = await createProject(
+         { githubURL, slug },
+         {
+            docker: {
+               createContainer: (options) => docker.createContainer(options)
+            },
+            redis: {
+               set: (key, value, mode, ttl) => redis.set(key, value, mode, ttl)
+            },
+            ensureImageExists,
+            generateSlug,
+            env: {
+               REDIS_URL,
+               MINIO_ENDPOINT,
+               MINIO_ACCESS_KEY,
+               MINIO_SECRET_KEY,
+               MINIO_BUCKET,
+               BUILD_IMAGE_NAME,
+               DOCKER_NETWORK,
+               REVERSE_PROXY_DOMAIN,
+               USE_HTTPS,
+               TTL_MINUTES,
+            }
+         }
       )
 
       return res.json({
          status: 'queued',
-         data: {
-            projectSlug,
-            url: previewURL
-         }
+         data: result
       })
    } catch (error: any) {
       console.error(`❌ Erro ao executar Docker: ${error}`)
