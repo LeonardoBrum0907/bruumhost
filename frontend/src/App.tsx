@@ -56,7 +56,7 @@ function App() {
       setDeployStatus('building')
 
       try {
-         const { data }: { data: { projectSlug: string, url: string } } = await fetch(`${apiURL}/new-project`, {
+         const { data }: { data: { projectSlug: string, previewURL: string } } = await fetch(`${apiURL}/new-project`, {
             method: 'POST',
             headers: {
                'Content-Type': 'application/json'
@@ -66,9 +66,9 @@ function App() {
 
 
          if (data) {
-            const { projectSlug, url } = data
+            const { projectSlug, previewURL } = data
 
-            setPreviewURL(url)
+            setPreviewURL(previewURL)
 
             console.log(`Subscribing to logs:${projectSlug}`);
             socket.emit('subscribe', `logs:${projectSlug}`)
