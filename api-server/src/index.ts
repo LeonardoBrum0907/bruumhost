@@ -93,7 +93,6 @@ const io = new Server(httpServer, {
 io.on('connection', (socket) => {
    socket.on('subscribe', (channel: string) => {
       socket.join(channel)
-      socket.emit('message', `Joined ${channel}`)
    })
 })
 
