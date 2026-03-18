@@ -23,7 +23,7 @@ const s3Client = new S3Client({
 })
 
 interface ProjectInfo {
-   slug: string
+   projectSlug: string
    createdAt: number
 }
 
@@ -39,9 +39,9 @@ export async function cleanupExpiredProjects(): Promise<void> {
 
       const project: ProjectInfo = JSON.parse(data)
       if (project.createdAt < cutoff) {
-         console.log(`Deleting expired project: ${project.slug}`)
+         console.log(`Deleting expired project: ${project.projectSlug}`)
 
-         await deleteMinIOFiles(project.slug)
+         await deleteMinIOFiles(project.projectSlug)
          await redis.del(key)
       }
    }
