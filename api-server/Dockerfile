@@ -11,4 +11,4 @@ RUN npm run build
 
 EXPOSE 9000 9002
 
-CMD ["node", "dist/index.js"]
+CMD ["node", "dist/src/index.js"]
