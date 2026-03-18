@@ -6,7 +6,8 @@
    "scripts": {
       "build": "tsc",
       "start": "node dist/index.js",
-      "dev": "ts-node-dev --respawn --transpile-only src/index.ts"
+      "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+      "test": "jest"
    },
    "dependencies": {
       "@aws-sdk/client-s3": "^3.946.0",
