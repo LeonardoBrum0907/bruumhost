@@ -4,7 +4,7 @@ import { CreateProjectDeps } from "../../services/create-project"
 
 export function makeDockerClientMock() {
    const start = jest.fn<Promise<void>, []>(() => Promise.resolve())
-   const createContainer = jest.fn<Promise<{ start: () => Promise<void> }>, [DockerCreateContainerOptions]>(async (_options) => ({ start }))
+   const createContainer = jest.fn<Promise<{ start: () => Promise<void> }>, [DockerCreateContainerOptions]>(async () => ({ start }))
    const docker: DockerClientPort = { createContainer }
    return { docker, createContainer, start }
 }

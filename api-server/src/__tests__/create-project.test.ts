@@ -1,4 +1,3 @@
-import { DockerCreateContainerOptions } from "../core/ports"
 import { createProject } from "../services/create-project"
 import { makeCreateProjectDeps } from "../tests/helpers/test-deps"
 

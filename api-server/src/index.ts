@@ -58,7 +58,7 @@ async function ensureImageExists(imageName: string): Promise<void> {
       const stream = await docker.pull(imageName)
 
       return new Promise((resolve, reject) => {
-         docker.modem.followProgress(stream, (err: Error | null, output: any[]) => {
+         docker.modem.followProgress(stream, (err: Error | null) => {
             if (err) {
                console.error(`❌ Erro ao fazer pull da imagem: ${err.message}`)
                reject(err)
@@ -68,9 +68,13 @@ async function ensureImageExists(imageName: string): Promise<void> {
             }
          })
       })
-   } catch (error: any) {
-      console.error(`❌ Erro ao verificar/baixar imagem: ${error.message}`)
-      throw error
+   } catch (error) {
+      if (error instanceof Error) {
+         console.error(`❌ Erro ao verificar/baixar imagem: ${error.message}`)
+         throw error
+      }
+
+      console.error("Ocorreu um erro inesperado", error)
    }
 }
 
@@ -127,15 +131,24 @@ app.post('/new-project', async (req: Request<{}, {}, ProjectRequest>, res: Respo
          status: 'queued',
          data: result
       })
-   } catch (error: any) {
+   } catch (error) {
+      if (error instanceof Error) {
+         console.error(`❌ Erro ao executar Docker: ${error}`)
+         console.error(`Stack trace: ${error.stack}`)
+   
+         return res.status(500).json({
+            status: 'error',
+            message: 'Falha ao iniciar build',
+            error: error.message,
+            details: error.stack
+         })
+      }
       console.error(`❌ Erro ao executar Docker: ${error}`)
-      console.error(`Stack trace: ${error.stack}`)
 
       return res.status(500).json({
          status: 'error',
          message: 'Falha ao iniciar build',
-         error: error.message,
-         details: error.stack
+         error: error
       })
    }
 })
@@ -153,9 +166,12 @@ initRedisSubscribe()
 async function initializeBuilderImage() {
    try {
       await ensureImageExists(env.BUILD_IMAGE_NAME)
-   } catch (error: any) {
-      console.warn(`⚠️ Não foi possível verificar/baixar a imagem na inicialização: ${error.message}`)
-      console.warn(`⚠️ A imagem será baixada na primeira requisição`)
+   } catch (error) {
+      if (error instanceof Error) {
+         console.warn(`⚠️ Não foi possível verificar/baixar a imagem na inicialização: ${error.message}`)
+         console.warn(`⚠️ A imagem será baixada na primeira requisição`)
+      }
+      console.warn(`⚠️ Não foi possível verificar/baixar a imagem na inicialização: ${error}`)      
    }
 }
 
@@ -165,7 +181,7 @@ setInterval(async () => {
    console.log('Running cleanup...')
    try {
       await cleanupExpiredProjects()
-   } catch (error: any) {
+   } catch (error) {
       console.error(`Error running cleanup: ${error}`)
    }
 }, 1000 * 60 * 10) // Run every 10 minutes
