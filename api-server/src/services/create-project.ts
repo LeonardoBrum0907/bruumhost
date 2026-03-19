@@ -11,7 +11,7 @@ interface CreateProjectOutput {
    previewURL: string
 }
 
-interface CreateProjectDeps {
+export interface CreateProjectDeps {
    docker: DockerClientPort
    redis: RedisPort
    imageChecker: ImageCheckerPort
