@@ -153,8 +153,6 @@ app.post('/new-project', async (req: Request<{}, {}, ProjectRequest>, res: Respo
    }
 })
 
-// test commit 
-
 async function initRedisSubscribe() {
    console.log('Subscribed to logs...')
    subscriber.psubscribe('logs:*')
