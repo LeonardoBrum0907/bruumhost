@@ -1,10 +1,10 @@
 import { EnvConfig } from "../../core/env"
-import { ClockPort, DockerClientPort, ImageCheckerPort, RedisPort } from "../../core/ports"
+import { ClockPort, DockerClientPort, DockerCreateContainerOptions, ImageCheckerPort, RedisPort } from "../../core/ports"
 import { CreateProjectDeps } from "../../services/create-project"
 
 export function makeDockerClientMock() {
    const start = jest.fn<Promise<void>, []>(() => Promise.resolve())
-   const createContainer = jest.fn(async () => ({ start }))
+   const createContainer = jest.fn<Promise<{ start: () => Promise<void> }>, [DockerCreateContainerOptions]>(async (_options) => ({ start }))
    const docker: DockerClientPort = { createContainer }
    return { docker, createContainer, start }
 }
