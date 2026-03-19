@@ -8,7 +8,7 @@ export interface ImageCheckerPort {
    ensureImageExists(imageName: string): Promise<void>
 }
 
-interface DockerCreateContainerOptions {
+export interface DockerCreateContainerOptions {
    Image: string
    name: string
    Env: string[]
