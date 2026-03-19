@@ -15,7 +15,6 @@ describe('createProject', () => {
       } = makeCreateProjectDeps(undefined, FIXED_NOW)
 
       const githubURL = 'https://github.com/org/repo'
-      // const slug = 'custom-slug'
 
       const result = await createProject({ githubURL }, deps)
 
