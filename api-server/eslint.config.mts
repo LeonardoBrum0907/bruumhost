@@ -1,0 +1,24 @@
+import globals from "globals";
+import tseslint from "typescript-eslint";
+import { defineConfig } from "eslint/config";
+
+export default defineConfig([
+   {
+      files: ["**/*.{js,mjs,cjs,ts,mts,cts}"],
+      languageOptions: {
+         globals: {
+            ...globals.browser,
+            ...globals.node,
+            ...globals.jest
+         }
+      }
+   },
+   tseslint.configs.recommended,
+   {
+      rules: {
+         "no-unused-vars": "warn",
+         "no-console": "off",
+         "@typescript-eslint/no-empty-object-type": "off"
+      }
+   }
+]);
