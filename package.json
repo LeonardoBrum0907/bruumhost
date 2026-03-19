@@ -13,7 +13,9 @@
    "scripts": {
       "prepare": "husky",
       "lint:frontend": "cd frontend && npm run lint:fix",
-      "test:frontend": "cd frontend && npm run test:run related -- --passWithNoTests"
+      "test:frontend": "cd frontend && npm run test:run related -- --passWithNoTests",
+      "lint:api": "cd api-server && npm run lint:fix",
+      "test:api": "cd api-server && npm run test -- --findRelatedTests --passWithNoTests"
    },
    "lint-staged": {
       "frontend/src/**/*.{ts,tsx}": [
@@ -21,6 +23,13 @@
          "npm run test:frontend"
       ],
       "frontend/**/*.{json,css}": [
+         "npm run lint:frontend"
+      ],
+      "api-server/src/**/*.{ts,tsx}": [
+         "npm run lint:frontend",
+         "npm run test:frontend"
+      ],
+      "api-server/**/*.{json,css}": [
          "npm run lint:frontend"
       ]
    },
