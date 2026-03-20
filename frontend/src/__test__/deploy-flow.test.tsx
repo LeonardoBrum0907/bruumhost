@@ -23,7 +23,7 @@ describe('Deploy Flow', () => {
       const mockSlug = "project-slug";
       const mockPreviewURL = "https://project-url.com";
       (globalThis.fetch as unknown as unknown as Mock).mockResolvedValueOnce({
-         json: async () => ({ data: { projectSlug: mockSlug, url: mockPreviewURL } })
+         json: async () => ({ data: { projectSlug: mockSlug, previewURL: mockPreviewURL } })
       })
 
       await userEvent.click(button)
