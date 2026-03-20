@@ -4,10 +4,10 @@
   "description": "",
   "license": "ISC",
   "author": "",
-  "main": "dist/script.js",
+  "main": "dist/src/index.js",
   "scripts": {
     "build": "tsc",
-    "start": "node dist/script.js"
+    "start": "node dist/src/index.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.946.0",
