@@ -8,4 +8,4 @@ echo "Clonando repositório: $GITHUB_REPOSITORY_URL"
 git clone "$GITHUB_REPOSITORY_URL" /home/app/output
 echo "Repositório clonado com sucesso"
 
-exec node dist/script.js
+exec node dist/src/index.js

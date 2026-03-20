@@ -20,7 +20,7 @@ WORKDIR /home/app
 
 # Copia os arquivos do projeto para o container
 COPY main.sh main.sh
-COPY script.ts script.ts
+COPY src/ ./src/
 COPY tsconfig.json tsconfig.json
 COPY package*.json .
 
