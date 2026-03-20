@@ -6,20 +6,11 @@ import Redis from 'ioredis'
 import dotenv from 'dotenv'
 import { CreateBucketCommand, HeadBucketCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
 import { readBuilderEnv } from './config/env'
+import { LogType, DeployStatus, LogMessage } from './domain/messages'
 
 dotenv.config()
 
 const configEnv = readBuilderEnv()
-
-type LogType = 'status' | 'error' | 'warning' | 'info' | 'debug'
-type DeplyStatus = 'idle' | 'building' | 'uploading' | 'success' | 'error'
-
-interface LogMessage {
-   log: string
-   type?: LogType
-   status?: DeplyStatus
-   timestamp?: number
-}
 
 const publisher = new Redis(configEnv.REDIS_URL)
 
@@ -33,7 +24,7 @@ const s3Client = new S3Client({
    forcePathStyle: true
 })
 
-function publishLog(log: string, metadata?: { type?: LogType, status?: DeplyStatus }): void {
+function publishLog(log: string, metadata?: { type?: LogType, status?: DeployStatus }): void {
    const message: LogMessage = {
       log,
       type: metadata?.type,
