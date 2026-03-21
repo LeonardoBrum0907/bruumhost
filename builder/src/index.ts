@@ -6,7 +6,6 @@ import Redis from 'ioredis'
 import dotenv from 'dotenv'
 import { CreateBucketCommand, HeadBucketCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
 import { readBuilderEnv } from './config/env'
-import { LogType, DeployStatus, LogMessage } from './domain/messages'
 import { LogPublisher } from './application/ports/log-publisher'
 import { RedisLogPublisher } from './infrastructure/redis-log-publisher'
 
@@ -27,34 +26,101 @@ const s3Client = new S3Client({
    forcePathStyle: true
 })
 
-async function uploadDirectoryToMinIO(localPath: string, s3Prefix: string): Promise<void> {
-   const files = fs.readdirSync(localPath)
+interface FileTreeNode {
+   name: string
+   localPath: string
+   s3Key: string
+   isDirectory: boolean
+   size: number
+   children: FileTreeNode[]
+}
 
-   for (const file of files) {
-      const filePath = path.join(localPath, file)
-      const s3Key = path.join(s3Prefix, file).replace(/\\/g, '/')
+interface TreeStats {
+   files: FileTreeNode[]
+   totalSize: number
+   directoryCount: number
+}
 
-      if (fs.lstatSync(filePath).isDirectory()) {
-         await uploadDirectoryToMinIO(filePath, s3Key)
-      } else {
-         const fileContent = fs.readFileSync(filePath)
-         const contentType = mime.lookup(filePath) || 'application/octet-stream'
-         const objectParams = {
-            Bucket: configEnv.MINIO_BUCKET,
-            Key: s3Key,
-            Body: fileContent,
-            ContentType: contentType
-         }
+function formatBytes(bytes: number): string {
+   if (bytes === 0) return '0 B'
+   const units = ['B', 'KB', 'MB', 'GB']
+   const i = Math.floor(Math.log(bytes) / Math.log(1024))
+   const value = bytes / Math.pow(1024, i)
+   return `${value.toFixed(1)} ${units[i]}`
+}
 
-         try {
-            await s3Client.send(new PutObjectCommand(objectParams))
-            logPublisher.publish(`Uploaded: ${s3Key}`, { type: 'info', status: 'uploading' })
-         } catch (error: any) {
-            console.error(`Error uploading ${s3Key}:`, error)
-            logPublisher.publish(`Error uploading ${s3Key}: ${error.message}`, { type: 'error', status: 'error' })
-            throw error
-         }
+function buildFileTree(localPath: string, s3Prefix: string): FileTreeNode {
+   const name = path.basename(localPath)
+   const stat = fs.lstatSync(localPath)
+
+   const node: FileTreeNode = {
+      name, // builder
+      localPath, 
+      s3Key: s3Prefix.replace(/\\/g, '/'),
+      isDirectory: stat.isDirectory(), 
+      size: stat.isDirectory() ? 0 : stat.size,
+      children: [] //[/src,/]
+   }
+
+   if (stat.isDirectory()) {
+      const entries = fs.readdirSync(localPath)
+      for (const entry of entries) {
+         const childLocalPath = path.join(localPath, entry)
+         const childS3Key = path.join(s3Prefix, entry).replace(/\\/g, '/')
+         node.children.push(buildFileTree(childLocalPath, childS3Key))
       }
+   }
+
+   return node
+}
+
+function collectTreeStats(root: FileTreeNode): TreeStats {
+   const files: FileTreeNode[] = []
+   let totalSize = 0
+   let directoryCount = 0
+
+   function dfs(node: FileTreeNode): void {
+      if (node.isDirectory) {
+         directoryCount++
+         for (const child of node.children) {
+            dfs(child)
+         }
+      } else {
+         files.push(node)
+         totalSize += node.size
+      }
+   }
+
+   dfs(root)
+   return { files, totalSize, directoryCount }
+}
+
+async function uploadFilesInParallel(
+   files: FileTreeNode[],
+   concurrency: number = 5
+): Promise<void> {
+   let uploadedFiles = 0
+   const totalNumberFiles = files.length
+
+   async function uploadedSingleFile(file: FileTreeNode): Promise<void> {
+      const fileContent = fs.readFileSync(file.localPath)
+      const contentType = mime.lookup(file.localPath) || 'application/octet-stream'
+
+      await s3Client.send(new PutObjectCommand({
+         Bucket: configEnv.MINIO_BUCKET,
+         Key: file.s3Key,
+         Body: fileContent,
+         ContentType: contentType
+      }))
+
+      uploadedFiles++
+      const uploadedPercent = Math.round((uploadedFiles / totalNumberFiles) * 100)
+      logPublisher.publish(`Uploaded (${uploadedFiles}/${totalNumberFiles} - ${uploadedPercent}%): ${file.s3Key}`, { type: 'info', status: 'uploading' })
+   }
+
+   for (let i = 0; i < files.length; i += concurrency) {
+      const batch = files.slice(i, i + concurrency)
+      await Promise.all(batch.map(file => uploadedSingleFile(file)))
    }
 }
 
@@ -112,11 +178,21 @@ async function init(): Promise<void> {
          process.exit(1)
       }
 
-      logPublisher.publish(`Starting to upload files to MinIO`, { type: 'info', status: 'uploading' })
+      logPublisher.publish(`Scanning build output...`, { type: 'info', status: 'uploading' })
 
       try {
          const s3Prefix = `__outputs/${configEnv.PROJECT_ID}`
-         await uploadDirectoryToMinIO(distFolderPath, s3Prefix)
+
+         const fileTree = buildFileTree(distFolderPath, s3Prefix)
+
+         const stats = collectTreeStats(fileTree)
+
+         logPublisher.publish(
+            `Found ${stats.files.length} files (${formatBytes(stats.totalSize)}) in ${stats.directoryCount} directories`,
+            { type: 'info', status: 'uploading' }
+         )
+
+         await uploadFilesInParallel(stats.files, 5)
 
          logPublisher.publish(`Files uploaded successfully to MinIO: ${s3Prefix}`, { type: 'info', status: 'success' })
          console.log(`Files uploaded successfully to MinIO: ${s3Prefix}`)
