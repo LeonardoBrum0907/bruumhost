@@ -5,9 +5,11 @@ import mime from 'mime-types'
 import Redis from 'ioredis'
 import dotenv from 'dotenv'
 import { CreateBucketCommand, HeadBucketCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
-import { readBuilderEnv } from './config/env'
-import { LogPublisher } from './application/ports/log-publisher'
-import { RedisLogPublisher } from './infrastructure/redis-log-publisher'
+import { readBuilderEnv } from '@/config/env'
+import { LogPublisher } from '@/application/ports/log-publisher'
+import { RedisLogPublisher } from '@/infrastructure/redis-log-publisher'
+import { collectTreeStats, FileTreeNode } from '@/domain/file-tree'
+import { formatBytes } from '@/infrastructure/utils/formatters'
 
 dotenv.config()
 
@@ -25,29 +27,6 @@ const s3Client = new S3Client({
    },
    forcePathStyle: true
 })
-
-interface FileTreeNode {
-   name: string
-   localPath: string
-   s3Key: string
-   isDirectory: boolean
-   size: number
-   children: FileTreeNode[]
-}
-
-interface TreeStats {
-   files: FileTreeNode[]
-   totalSize: number
-   directoryCount: number
-}
-
-function formatBytes(bytes: number): string {
-   if (bytes === 0) return '0 B'
-   const units = ['B', 'KB', 'MB', 'GB']
-   const i = Math.floor(Math.log(bytes) / Math.log(1024))
-   const value = bytes / Math.pow(1024, i)
-   return `${value.toFixed(1)} ${units[i]}`
-}
 
 function buildFileTree(localPath: string, s3Prefix: string): FileTreeNode {
    const name = path.basename(localPath)
@@ -72,27 +51,6 @@ function buildFileTree(localPath: string, s3Prefix: string): FileTreeNode {
    }
 
    return node
-}
-
-function collectTreeStats(root: FileTreeNode): TreeStats {
-   const files: FileTreeNode[] = []
-   let totalSize = 0
-   let directoryCount = 0
-
-   function dfs(node: FileTreeNode): void {
-      if (node.isDirectory) {
-         directoryCount++
-         for (const child of node.children) {
-            dfs(child)
-         }
-      } else {
-         files.push(node)
-         totalSize += node.size
-      }
-   }
-
-   dfs(root)
-   return { files, totalSize, directoryCount }
 }
 
 async function uploadFilesInParallel(
@@ -146,7 +104,6 @@ async function init(): Promise<void> {
 
    await ensureBucketExists()
 
-   // const outDirPath = path.join(__dirname, 'output')
    const outDirPath = '/home/app/output'
    const p: ChildProcess = exec(`cd ${outDirPath} && npm install && npm run build`)
 
