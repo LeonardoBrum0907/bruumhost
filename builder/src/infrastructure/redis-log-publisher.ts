@@ -1,6 +1,6 @@
 import Redis from "ioredis";
-import { LogPublisher } from "../application/ports/log-publisher";
-import { DeployStatus, LogMessage, LogType } from "../domain/messages";
+import { LogPublisher } from "@/application/ports/log-publisher";
+import { DeployStatus, LogMessage, LogType } from "@/domain/messages";
 
 export class RedisLogPublisher implements LogPublisher {
    constructor(
