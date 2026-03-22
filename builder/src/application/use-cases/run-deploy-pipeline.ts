@@ -67,6 +67,10 @@ export async function runDeployPipeline(deps: RunDeployPipelineDeps): Promise<{ 
          'Scanning build output...',
          { type: 'info', status: 'uploading' }
       )
+      logPublisher.publish(
+         `Upload concurrency: ${config.uploadConcurrency}`,
+         { type: 'info', status: 'uploading' }
+      )
 
       const s3Prefix = `__outputs/${config.projectId}`
       const fileTree = deps.buildFileTree(distFolderPath, s3Prefix)
