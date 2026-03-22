@@ -10,6 +10,7 @@ export interface EnvConfig {
    REVERSE_PROXY_DOMAIN: string
    USE_HTTPS: boolean
    TTL_MINUTES: number
+   UPLOAD_CONCURRENCY: number
 }
 
 export function readEnv(env: NodeJS.ProcessEnv): EnvConfig {
@@ -25,5 +26,6 @@ export function readEnv(env: NodeJS.ProcessEnv): EnvConfig {
       REVERSE_PROXY_DOMAIN: env.REVERSE_PROXY_DOMAIN || "localhost",
       USE_HTTPS: env.USE_HTTPS !== "false",
       TTL_MINUTES: parseInt(env.TTL_MINUTES || "60", 10),
+      UPLOAD_CONCURRENCY: parseInt(env.UPLOAD_CONCURRENCY || "5", 10)
    }
 }

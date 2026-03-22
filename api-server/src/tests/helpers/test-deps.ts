@@ -40,6 +40,7 @@ export function makeEnvConfig(overrides: Partial<EnvConfig> = {}): EnvConfig {
       REVERSE_PROXY_DOMAIN: 'localhost',
       USE_HTTPS: false,
       TTL_MINUTES: 60,
+      UPLOAD_CONCURRENCY: 5,
       ...overrides,
    }
 }

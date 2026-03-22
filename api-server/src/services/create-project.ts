@@ -51,6 +51,7 @@ export async function createProject(
          `MINIO_ACCESS_KEY=${env.MINIO_ACCESS_KEY}`,
          `MINIO_SECRET_KEY=${env.MINIO_SECRET_KEY}`,
          `MINIO_BUCKET=${env.MINIO_BUCKET}`,
+         `UPLOAD_CONCURRENCY=${env.UPLOAD_CONCURRENCY}`
       ],
       HostConfig: {
          AutoRemove: true,

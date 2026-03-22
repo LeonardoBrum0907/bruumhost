@@ -47,6 +47,7 @@ describe('createProject', () => {
             `MINIO_ACCESS_KEY=${deps.env.MINIO_ACCESS_KEY}`,
             `MINIO_SECRET_KEY=${deps.env.MINIO_SECRET_KEY}`,
             `MINIO_BUCKET=${deps.env.MINIO_BUCKET}`,
+            `UPLOAD_CONCURRENCY=${deps.env.UPLOAD_CONCURRENCY}`,
          ])
       )
       expect(options.AttachStdout).toBe(true)
