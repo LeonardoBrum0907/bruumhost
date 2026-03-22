@@ -5,7 +5,7 @@ import { collectTreeStats, FileTreeNode } from "@/domain/file-tree"
 import path from "path"
 import { uploadArtifactsInParallel } from "./upload-artifacts-in-parallel"
 
-interface DeployConfig {
+export interface DeployConfig {
    projectId: string
    minioBucket: string
    outputDir: string
